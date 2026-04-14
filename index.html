@@ -1,23 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESL Games</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: #f0f8ff;
-    }
-    h1 { color: #2c3e50; }
-    p { color: #555; font-size: 1.1em; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESL Game Zone</title>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1b2d;
+    --surface: #162336;
+    --border: rgba(255,255,255,0.08);
+    --gold: #fbbf24;
+    --gold-glow: rgba(251,191,36,0.18);
+    --teal: #2dd4bf;
+    --coral: #fb7185;
+    --purple: #a78bfa;
+    --white: #f1f5f9;
+    --muted: #94a3b8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── ANIMATED GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(45,212,191,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,212,191,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridDrift 20s linear infinite;
+  }
+  @keyframes gridDrift { from{background-position:0 0} to{background-position:48px 48px} }
+
+  /* Glow blobs */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 40% at 15% 20%, rgba(167,139,250,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 35% at 85% 75%, rgba(45,212,191,0.10) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(251,191,36,0.06) 0%, transparent 70%);
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    position: relative; z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* ── HERO ── */
+  .hero { text-align: center; margin-bottom: 64px; animation: fadeUp 0.7s ease both; }
+
+  .hero-eyebrow {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 0.72rem; letter-spacing: 6px; text-transform: uppercase;
+    color: var(--teal); margin-bottom: 16px;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .hero-eyebrow::before, .hero-eyebrow::after {
+    content: ''; display: block; width: 32px; height: 1px; background: var(--teal); opacity: 0.5;
+  }
+
+  .hero-title {
+    font-family: 'Righteous', sans-serif;
+    font-size: clamp(2.8rem, 8vw, 5.5rem);
+    line-height: 1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--coral) 50%, var(--purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 40px rgba(251,191,36,0.25));
+  }
+
+  .hero-sub {
+    font-size: 1.1rem; color: var(--muted); max-width: 460px;
+    margin: 0 auto; line-height: 1.7;
+    font-weight: 600;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 0.7rem; letter-spacing: 5px; text-transform: uppercase;
+    color: var(--muted); font-weight: 800;
+    margin-bottom: 20px;
+    animation: fadeUp 0.7s 0.15s ease both;
+  }
+
+  /* ── GAME CARDS ── */
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+
+  .game-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 26px;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  /* Staggered animation */
+  .game-card:nth-child(1) { animation-delay: 0.2s; }
+  .game-card:nth-child(2) { animation-delay: 0.32s; }
+  .game-card:nth-child(3) { animation-delay: 0.44s; }
+  .game-card:nth-child(4) { animation-delay: 0.56s; }
+
+  /* Coloured top stripe per card */
+  .game-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--card-accent);
+    border-radius: 16px 16px 0 0;
+  }
+
+  /* Hover glow using the same accent */
+  .game-card::after {
+    content: '';
+    position: absolute; inset: 0; border-radius: 16px;
+    background: radial-gradient(ellipse at 30% 30%, var(--card-glow) 0%, transparent 65%);
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .game-card:hover { transform: translateY(-4px); border-color: var(--card-accent-faint); }
+  .game-card:hover::after { opacity: 1; }
+  .game-card:hover .card-arrow { transform: translateX(4px); }
+
+  /* Accent variants */
+  .card--gold   { --card-accent: var(--gold);   --card-glow: rgba(251,191,36,0.12);  --card-accent-faint: rgba(251,191,36,0.4); }
+  .card--teal   { --card-accent: var(--teal);   --card-glow: rgba(45,212,191,0.12);  --card-accent-faint: rgba(45,212,191,0.4); }
+  .card--coral  { --card-accent: var(--coral);  --card-glow: rgba(251,113,133,0.12); --card-accent-faint: rgba(251,113,133,0.4); }
+  .card--purple { --card-accent: var(--purple); --card-glow: rgba(167,139,250,0.12); --card-accent-faint: rgba(167,139,250,0.4); }
+
+  .card-emoji {
+    font-size: 2.4rem; margin-bottom: 14px; display: block;
+    filter: drop-shadow(0 4px 12px var(--card-glow));
+  }
+
+  .card-tag {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--card-accent);
+    background: var(--card-glow);
+    border: 1px solid var(--card-accent-faint);
+    padding: 3px 10px; border-radius: 20px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-family: 'Righteous', sans-serif;
+    font-size: 1.35rem;
+    color: var(--white);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .card-desc {
+    font-size: 0.88rem; color: var(--muted); line-height: 1.6;
+    margin-bottom: 20px; font-weight: 600;
+  }
+
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .card-meta {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+
+  .meta-pill {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 1px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--muted); padding: 3px 9px; border-radius: 20px;
+  }
+
+  .card-arrow {
+    font-size: 1.1rem; color: var(--card-accent);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  /* Coming soon card */
+  .card--soon {
+    opacity: 0.45; cursor: not-allowed; pointer-events: none;
+    --card-accent: var(--muted); --card-glow: rgba(148,163,184,0.08);
+    --card-accent-faint: rgba(148,163,184,0.2);
+  }
+
+  .soon-badge {
+    position: absolute; top: 18px; right: 18px;
+    font-size: 0.6rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+    background: rgba(148,163,184,0.15); border: 1px solid rgba(148,163,184,0.25);
+    color: var(--muted); padding: 3px 9px; border-radius: 20px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; margin-top: 72px;
+    font-size: 0.8rem; color: rgba(148,163,184,0.4);
+    font-weight: 600; letter-spacing: 1px;
+    animation: fadeUp 0.7s 0.6s ease both;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 500px) {
+    .page { padding: 40px 16px 60px; }
+    .hero { margin-bottom: 44px; }
+  }
+</style>
 </head>
 <body>
-  <h1>🎓 ESL Interactive Games</h1>
-  <p>Welcome! Games and activities for English learners will appear here soon.</p>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">ESL Game Zone</div>
+    <h1 class="hero-title">Let's Play &amp;<br>Learn English!</h1>
+    <p class="hero-sub">Interactive classroom games designed to make English practice fun, competitive, and memorable.</p>
+  </div>
+
+  <!-- GAMES -->
+  <div class="section-label">🎮 Available Games</div>
+  <div class="games-grid">
+
+    <!-- JEOPARDY — LIVE -->
+    <a href="jeopardy-esl.html" class="game-card card--gold">
+      <span class="card-emoji">🏆</span>
+      <span class="card-tag">Grammar &amp; Vocabulary</span>
+      <div class="card-title">ESL Jeopardy!</div>
+      <p class="card-desc">Pick a category and point value, answer the question, and race your team to 3,500 points!</p>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span class="meta-pill">Teams</span>
+          <span class="meta-pill">A1 → B1</span>
+          <span class="meta-pill">30 cards</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- PLACEHOLDER — coming soon examples so the page doesn't look empty -->
+    <a href="#" class="game-card card--teal card--soon">
+      <span class="soon-badge">Coming soon</span>
+      <span class="card-emoji">🔤</span>
+      <span class="card-tag">Vocabulary</span>
+      <div class="card-title">Word Scramble</div>
+      <p class="card-desc">Unscramble the letters to find the hidden word before time runs out!</p>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span class="meta-pill">Individual</span>
+          <span class="meta-pill">A1 → A2</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <a href="#" class="game-card card--coral card--soon">
+      <span class="soon-badge">Coming soon</span>
+      <span class="card-emoji">❓</span>
+      <span class="card-tag">Grammar</span>
+      <div class="card-title">Quick Quiz</div>
+      <p class="card-desc">Timed multiple-choice questions to drill grammar rules under pressure.</p>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span class="meta-pill">Teams</span>
+          <span class="meta-pill">A2 → B1</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>Made with ❤️ for ESL students &nbsp;·&nbsp; Hosted on GitHub Pages</footer>
+</div>
 </body>
 </html>
