@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESL Jeopardy</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #06103a;
+    --blue: #0a1e7a;
+    --bright-blue: #1a3cbe;
+    --gold: #f5c518;
+    --gold-dark: #c89f0a;
+    --gold-light: #ffe066;
+    --silver: #c8d8f0;
+    --white: #ffffff;
+    --red: #e63030;
+    --green: #1db954;
+    --card-bg: #0d2280;
+    --card-hover: #1a3cbe;
+    --used-bg: #0a1650;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(26,60,190,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(245,197,24,0.07) 0%, transparent 50%);
+  }
+
+  .stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .star { position: absolute; background: var(--white); border-radius: 50%; animation: twinkle var(--d) ease-in-out infinite; }
+  @keyframes twinkle { 0%,100%{opacity:.1} 50%{opacity:.6} }
+
+  header { text-align: center; padding: 20px 20px 8px; position: relative; z-index: 1; }
+  .main-title {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(2rem, 6vw, 4rem);
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(245,197,24,0.5), 3px 3px 0 var(--gold-dark);
+    letter-spacing: 2px; line-height: 1;
+  }
+  .main-title span { color: var(--white); }
+  .subtitle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .95rem; color: var(--silver);
+    letter-spacing: 5px; text-transform: uppercase; margin-top: 4px;
+  }
+
+  .toolbar {
+    display: flex; justify-content: center; gap: 10px;
+    padding: 8px 16px 4px; flex-wrap: wrap; position: relative; z-index: 1;
+  }
+  .btn-tool {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: .83rem; letter-spacing: 2px; text-transform: uppercase;
+    padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; transition: all .15s;
+  }
+  .btn-shuffle { background: var(--gold); color: var(--navy); }
+  .btn-shuffle:hover { background: var(--gold-light); }
+  .btn-reset-cards { background: rgba(255,255,255,.09); color: var(--white); border: 1px solid rgba(255,255,255,.22); }
+  .btn-reset-cards:hover { background: rgba(255,255,255,.18); }
+  .btn-reset-scores { background: rgba(230,48,48,.13); color: #ff8888; border: 1px solid rgba(230,48,48,.32); }
+  .btn-reset-scores:hover { background: rgba(230,48,48,.25); }
+
+  .game-wrapper {
+    display: flex; gap: 14px; padding: 10px 14px 20px;
+    align-items: flex-start; max-width: 1400px; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+
+  .board-section { flex: 1; min-width: 0; }
+  .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; }
+
+  .category-header {
+    background: var(--blue); border: 2px solid var(--gold); border-radius: 6px;
+    padding: 10px 6px; text-align: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: clamp(.63rem, 1.3vw, .92rem); text-transform: uppercase;
+    letter-spacing: 1px; color: var(--gold); min-height: 58px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1.25; box-shadow: 0 4px 15px rgba(0,0,0,.4);
+    white-space: pre-line;
+  }
+
+  .card {
+    background: var(--card-bg); border: 2px solid rgba(245,197,24,.3);
+    border-radius: 6px; min-height: 66px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .2s; position: relative;
+    overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .card::before {
+    content:''; position: absolute; inset:0;
+    background: linear-gradient(135deg,rgba(255,255,255,.04) 0%,transparent 60%);
+    pointer-events: none;
+  }
+  .card:hover:not(.used) {
+    background: var(--card-hover); border-color: var(--gold);
+    transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,197,24,.2);
+  }
+  .card.used { background: var(--used-bg); border-color: rgba(255,255,255,.07); cursor: default; opacity: .38; }
+  .card-points {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+    color: var(--gold); text-shadow: 0 0 12px rgba(245,197,24,.4); letter-spacing: 1px;
+  }
+  .card.used .card-points { color: #333; text-shadow: none; }
+
+  .sidebar { width: 255px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: rgba(255,255,255,.04); border: 1px solid rgba(245,197,24,.22); border-radius: 10px; padding: 13px; }
+  .panel h3 {
+    font-family: 'Barlow Condensed', sans-serif; font-size: .76rem;
+    letter-spacing: 4px; text-transform: uppercase; color: var(--silver);
+    margin-bottom: 10px; border-bottom: 1px solid rgba(245,197,24,.18); padding-bottom: 7px;
+  }
+
+  .panel input[type=text] {
+    width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(245,197,24,.3);
+    border-radius: 6px; color: var(--white); font-family: 'Barlow', sans-serif;
+    font-size: .92rem; padding: 7px 11px; outline: none; margin-bottom: 7px;
+  }
+  .panel input[type=text]:focus { border-color: var(--gold); }
+  .panel input[type=text]::placeholder { color: rgba(255,255,255,.3); }
+
+  .btn-add-team {
+    width: 100%; background: var(--gold); color: var(--navy); border: none;
+    border-radius: 6px; padding: 8px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: .93rem; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-add-team:hover { background: var(--gold-light); }
+
+  #teams-container { display: flex; flex-direction: column; gap: 9px; }
+  .team-row {
+    background: rgba(255,255,255,.05); border-radius: 8px; padding: 9px 11px;
+    border: 1px solid rgba(255,255,255,.08); animation: slideIn .3s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  .team-name-label {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: .93rem; color: var(--gold); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 5px;
+  }
+  .team-total { font-family: 'Anton', sans-serif; font-size: 1.45rem; color: var(--white); margin-bottom: 7px; line-height: 1; }
+  .team-total span { font-size: .73rem; color: var(--silver); font-family:'Barlow',sans-serif; font-weight:400; }
+  .score-controls { display: flex; gap: 5px; align-items: center; }
+  .score-select {
+    flex: 1; background: rgba(255,255,255,.08); border: 1px solid rgba(245,197,24,.3);
+    border-radius: 5px; color: var(--white); font-family: 'Barlow', sans-serif;
+    font-size: .87rem; padding: 5px 7px; outline: none; cursor: pointer;
+  }
+  .score-select option { background: var(--navy); }
+  .btn-score {
+    background: var(--green); color: var(--white); border: none;
+    border-radius: 5px; padding: 5px 9px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: .82rem; letter-spacing: 1px; cursor: pointer;
+    transition: background .15s; white-space: nowrap;
+  }
+  .btn-score:hover { background: #17a845; }
+  .progress-bar-wrap { margin-top: 6px; background: rgba(255,255,255,.08); border-radius: 4px; height: 5px; overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--gold-dark), var(--gold)); border-radius: 4px; transition: width .5s ease; }
+  .empty-teams { color: rgba(255,255,255,.3); font-size: .83rem; font-style: italic; text-align: center; padding: 8px 0; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.88);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .modal-overlay.active { opacity: 1; pointer-events: all; }
+  .modal {
+    background: linear-gradient(145deg, #0a1e7a, #06103a);
+    border: 3px solid var(--gold); border-radius: 16px;
+    max-width: 660px; width: 92%; padding: 34px 38px;
+    position: relative;
+    box-shadow: 0 0 80px rgba(245,197,24,.3), 0 30px 60px rgba(0,0,0,.6);
+    transform: scale(.92); transition: transform .25s; text-align: center;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-overlay.active .modal { transform: scale(1); }
+
+  .modal-category { font-family:'Barlow Condensed',sans-serif; font-size:.8rem; letter-spacing:5px; text-transform:uppercase; color:var(--silver); margin-bottom:6px; }
+  .modal-points { font-family:'Anton',sans-serif; font-size:3.2rem; color:var(--gold); text-shadow:0 0 30px rgba(245,197,24,.6); line-height:1; margin-bottom:16px; }
+  .modal-type-badge {
+    display:inline-block; background:rgba(245,197,24,.12); border:1px solid rgba(245,197,24,.38);
+    color:var(--gold); font-family:'Barlow Condensed',sans-serif; font-size:.77rem;
+    letter-spacing:3px; text-transform:uppercase; padding:4px 14px; border-radius:20px; margin-bottom:18px;
+  }
+  .modal-question {
+    font-family:'Barlow Condensed',sans-serif; font-weight:600;
+    font-size:clamp(1.15rem,2.8vw,1.65rem); color:var(--white);
+    line-height:1.45; margin-bottom:22px; min-height:52px;
+  }
+
+  /* Reveal */
+  .btn-reveal {
+    background: transparent; border: 2px solid var(--gold);
+    color: var(--gold); border-radius: 8px; padding: 9px 24px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: .98rem; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: all .2s; margin-bottom: 16px;
+    display: block; margin-left: auto; margin-right: auto;
+  }
+  .btn-reveal:hover { background: rgba(245,197,24,.1); }
+  .btn-reveal.revealed { border-color: var(--green); color: var(--green); }
+
+  .answer-box {
+    background: rgba(10,42,26,0.9); border: 2px solid var(--green);
+    border-radius: 10px; padding: 0 18px; text-align: left;
+    max-height: 0; overflow: hidden;
+    transition: max-height .4s ease, padding .35s ease, opacity .3s;
+    opacity: 0;
+  }
+  .answer-box.visible { max-height: 300px; padding: 14px 18px; opacity: 1; }
+  .answer-label {
+    font-family:'Barlow Condensed',sans-serif; font-size:.7rem;
+    letter-spacing:4px; text-transform:uppercase; color:var(--green); margin-bottom:7px;
+  }
+  .answer-text { font-family:'Barlow',sans-serif; font-size:.98rem; color:var(--white); line-height:1.55; }
+
+  .modal-close {
+    position:absolute; top:13px; right:17px; background:transparent;
+    border:none; color:var(--silver); font-size:1.4rem; cursor:pointer; line-height:1; transition:color .15s;
+  }
+  .modal-close:hover { color:var(--white); }
+
+  /* ── WINNER ── */
+  .winner-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; opacity: 0; pointer-events: none; transition: opacity .5s;
+  }
+  .winner-overlay.active { opacity: 1; pointer-events: all; }
+  .winner-circle {
+    width: min(360px,80vw); height: min(360px,80vw); border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #1a3cbe, #06103a 80%);
+    border: 6px solid var(--gold);
+    box-shadow: 0 0 0 12px rgba(245,197,24,.14), 0 0 80px rgba(245,197,24,.5);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 36px; animation: pulse-winner 2s ease-in-out infinite;
+  }
+  @keyframes pulse-winner {
+    0%,100%{box-shadow:0 0 0 12px rgba(245,197,24,.14),0 0 80px rgba(245,197,24,.5)}
+    50%{box-shadow:0 0 0 22px rgba(245,197,24,.07),0 0 130px rgba(245,197,24,.7)}
+  }
+  .winner-label { font-family:'Barlow Condensed',sans-serif; font-size:.93rem; letter-spacing:6px; text-transform:uppercase; color:var(--silver); margin-bottom:8px; }
+  .winner-trophy { font-size:3.2rem; margin-bottom:6px; animation:bounce 1s ease infinite alternate; }
+  @keyframes bounce { from{transform:translateY(0)} to{transform:translateY(-10px)} }
+  .winner-name { font-family:'Anton',sans-serif; font-size:clamp(1.7rem,5vw,2.8rem); color:var(--gold); text-shadow:0 0 20px rgba(245,197,24,.6); line-height:1.1; margin-bottom:5px; }
+  .winner-score { font-family:'Barlow Condensed',sans-serif; font-size:1.2rem; color:var(--silver); }
+  .winner-close {
+    position:absolute; top:26px; right:26px;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+    color:var(--white); font-size:.88rem; padding:7px 18px; border-radius:6px;
+    cursor:pointer; font-family:'Barlow Condensed',sans-serif;
+    letter-spacing:2px; text-transform:uppercase; transition:background .15s;
+  }
+  .winner-close:hover { background:rgba(255,255,255,.2); }
+
+  .confetti-container { position:fixed; inset:0; pointer-events:none; z-index:199; }
+  .confetti-dot { position:absolute; border-radius:2px; animation:fall linear forwards; }
+  @keyframes fall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+
+  @media(max-width:700px){
+    .game-wrapper{flex-direction:column}
+    .sidebar{width:100%}
+    .card{min-height:48px}
+    .category-header{min-height:46px;font-size:.6rem}
+    .modal{padding:24px 20px}
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<header>
+  <div class="main-title"><span>English</span> + JEOPARDY!</div>
+  <div class="subtitle">ESL Classroom Game &nbsp;·&nbsp; First to 3,500 pts wins</div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-tool btn-shuffle" onclick="shuffleBoard(true)">🔀 Shuffle Questions</button>
+  <button class="btn-tool btn-reset-cards" onclick="confirmResetCards()">♻️ Reset Cards</button>
+  <button class="btn-tool btn-reset-scores" onclick="confirmResetScores()">🗑️ Reset Scores</button>
+</div>
+
+<div class="game-wrapper">
+  <div class="board-section">
+    <div class="board" id="board"></div>
+  </div>
+  <div class="sidebar">
+    <div class="panel">
+      <h3>➕ Add Team</h3>
+      <input type="text" id="team-input" placeholder="Team name…" maxlength="20">
+      <button class="btn-add-team" onclick="addTeam()">Add Team</button>
+    </div>
+    <div class="panel">
+      <h3>🏆 Scoreboard</h3>
+      <div id="teams-container"><div class="empty-teams">No teams yet — add one above!</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-category" id="modal-category"></div>
+    <div class="modal-points" id="modal-points"></div>
+    <div class="modal-type-badge" id="modal-type"></div>
+    <div class="modal-question" id="modal-question"></div>
+    <button class="btn-reveal" id="btn-reveal" onclick="toggleReveal()">👁 Reveal Answer</button>
+    <div class="answer-box" id="answer-box">
+      <div class="answer-label" id="answer-label">Suggested Answer</div>
+      <div class="answer-text" id="answer-text"></div>
+    </div>
+  </div>
+</div>
+
+<!-- WINNER -->
+<div class="winner-overlay" id="winner-overlay">
+  <div class="confetti-container" id="confetti"></div>
+  <button class="winner-close" onclick="closeWinner()">Continue Game</button>
+  <div class="winner-circle">
+    <div class="winner-label">🎉 Winner!</div>
+    <div class="winner-trophy">🏆</div>
+    <div class="winner-name" id="winner-name"></div>
+    <div class="winner-score" id="winner-score"></div>
+  </div>
+</div>
+
+<script>
+// ─── ALL 100 PROMPTS (20 per category × 5 categories) ───────────────────────
+const ALL_CARDS = [
+  // ── Cat 0: Articles ──────────────────────────────────────────────────────
+  [
+    { prompt:'Fill in: "I have ___ apple in my bag."', type:'Grammar', level:'A1', answer:'an  (vowel sound → use "an")' },
+    { prompt:'Fill in: "She is ___ doctor."', type:'Grammar', level:'A1', answer:'a  (consonant sound → use "a")' },
+    { prompt:'Fill in: "Paris is ___ capital of France."', type:'Grammar', level:'A1', answer:'the  (specific, unique thing → definite article)' },
+    { prompt:'Name three objects in your room using "a" or "an".', type:'Speaking', level:'A1', answer:'✅ Success if: uses "a" before consonant sounds and "an" before vowel sounds correctly in all three examples. Uses full sentences (e.g. "There is a chair.").' },
+    { prompt:'Fill in: "I live in ___ big house."', type:'Grammar', level:'A1', answer:'a  (first mention, general → indefinite article)' },
+    { prompt:'Fill in: "Look at ___ moon tonight!"', type:'Grammar', level:'A2', answer:'the  (only one moon → definite article)' },
+    { prompt:'Fill in: "I like ___ milk in my coffee."', type:'Grammar', level:'A2', answer:'no article  (uncountable noun in a general sense → Ø)' },
+    { prompt:'Fill in: "He plays ___ guitar very well."', type:'Grammar', level:'A2', answer:'the  (musical instruments use "the")' },
+    { prompt:'Describe your breakfast using articles correctly.', type:'Speaking', level:'A2', answer:'✅ Success if: uses "a/an" for countable items first mentioned, "the" for specific items, and no article for uncountable nouns (e.g. "I had an egg and some coffee. The egg was delicious."). Speaks in full sentences.' },
+    { prompt:'Fill in: "We went to ___ cinema yesterday."', type:'Grammar', level:'A2', answer:'the  (specific, known place → definite article)' },
+    { prompt:'Fill in: "___ water is essential for life."', type:'Grammar', level:'A2', answer:'no article  (general uncountable noun → Ø)' },
+    { prompt:'Fill in: "I saw a man. ___ man was wearing a red hat."', type:'Grammar', level:'B1', answer:'The  (second mention = now specific → definite article)' },
+    { prompt:'Fill in: "He is ___ tallest boy in the class."', type:'Grammar', level:'B1', answer:'the  (superlatives always use "the")' },
+    { prompt:'Explain the difference: "I\'m going to school" vs "I\'m going to the school."', type:'Speaking', level:'B1', answer:'✅ Success if: explains that "school" (no article) = going as a student (purpose), while "the school" = going to the building (e.g. to pick someone up). Gives clear examples for both.' },
+    { prompt:'Fill in: "___ Mount Everest is very high."', type:'Grammar', level:'B1', answer:'no article  (names of mountains take no article → Ø)' },
+    { prompt:'Fill in: "I\'m staying at ___ Hilton Hotel."', type:'Grammar', level:'B1', answer:'the  (hotel names use "the")' },
+    { prompt:'Give a 30-second speech about your favorite city using at least 5 articles.', type:'Speaking', level:'B1', answer:'✅ Success if: uses 5+ articles (a, an, the, or Ø) correctly and in context, speaks for ~30 seconds with minimal hesitation, and uses varied sentence structures.' },
+    { prompt:'Fill in: "___ United Kingdom consists of four countries."', type:'Grammar', level:'B1', answer:'The  (countries with Kingdom/States/Republic use "the")' },
+    { prompt:'Correct the mistake: "The happiness is important."', type:'Grammar', level:'B1', answer:'"Happiness is important." — abstract nouns in general statements take no article.' },
+    { prompt:'Create 2 sentences: one using "the" for something specific, one with no article for something general.', type:'Speaking', level:'B1', answer:'✅ Success if: "the" sentence refers to a specific, identifiable noun (e.g. "The dog next door is loud.") and the no-article sentence makes a general statement (e.g. "Dogs are loyal animals."). Both are grammatically correct.' },
+  ],
+
+  // ── Cat 1: Question Words ─────────────────────────────────────────────────
+  [
+    { prompt:'Fill in: "___ is your name?"', type:'Grammar', level:'A1', answer:'What' },
+    { prompt:'Fill in: "___ are you from?"', type:'Grammar', level:'A1', answer:'Where' },
+    { prompt:'Fill in: "___ old are you?"', type:'Grammar', level:'A1', answer:'How' },
+    { prompt:'Ask a teammate their favorite color.', type:'Speaking', level:'A1', answer:'✅ Success if: forms a correct question (e.g. "What is your favorite color?"), uses natural intonation, and reacts to the answer (e.g. "Oh, I like blue too!").' },
+    { prompt:'Fill in: "___ is your birthday?"', type:'Grammar', level:'A1', answer:'When' },
+    { prompt:'Fill in: "___ do you live with?"', type:'Grammar', level:'A2', answer:'Who' },
+    { prompt:'Fill in: "___ is your favorite singer?"', type:'Grammar', level:'A2', answer:'Who' },
+    { prompt:'Fill in: "___ time does the movie start?"', type:'Grammar', level:'A2', answer:'What' },
+    { prompt:'Ask two questions about someone\'s weekend.', type:'Speaking', level:'A2', answer:'✅ Success if: forms two grammatically correct questions using different question words (e.g. "What did you do?" and "Where did you go?"), listens actively, and responds to the answers naturally.' },
+    { prompt:'Fill in: "___ many brothers do you have?"', type:'Grammar', level:'A2', answer:'How' },
+    { prompt:'Fill in: "___ much is this shirt?"', type:'Grammar', level:'A2', answer:'How' },
+    { prompt:'Fill in: "___ car is this? Is it yours?"', type:'Grammar', level:'B1', answer:'Whose' },
+    { prompt:'Fill in: "___ don\'t we go to the park?"', type:'Grammar', level:'B1', answer:'Why' },
+    { prompt:'Formulate a question to ask for directions to a bank.', type:'Speaking', level:'B1', answer:'✅ Success if: uses a polite opener (e.g. "Excuse me…"), an appropriate question word (Where/How), and a correct structure (e.g. "Could you tell me where the nearest bank is?"). Bonus for using an indirect question.' },
+    { prompt:'Fill in: "___ long does it take to get to London?"', type:'Grammar', level:'B1', answer:'How' },
+    { prompt:'Fill in: "___ of these two books do you prefer?"', type:'Grammar', level:'B1', answer:'Which' },
+    { prompt:'Ask a "How often" question about someone\'s hobbies.', type:'Speaking', level:'B1', answer:'✅ Success if: correctly uses "How often + aux + subject + verb" (e.g. "How often do you play tennis?"), follows up on the answer, and uses a frequency expression in the response (e.g. "twice a week").' },
+    { prompt:'Fill in: "___ far is the airport from here?"', type:'Grammar', level:'B1', answer:'How' },
+    { prompt:'Fill in: "___ kind of music do you like?"', type:'Grammar', level:'B1', answer:'What' },
+    { prompt:'Interview a partner: ask 3 questions using "Why," "Whose," and "How long."', type:'Speaking', level:'B1', answer:'✅ Success if: all three questions are grammatically correct, uses the right auxiliary verb for each, shows active listening between questions, and transitions naturally between them.' },
+  ],
+
+  // ── Cat 2: Present Simple – verb to be ───────────────────────────────────
+  [
+    { prompt:'Fill in: "I ___ a student."', type:'Grammar', level:'A1', answer:'am' },
+    { prompt:'Fill in: "They ___ happy today."', type:'Grammar', level:'A1', answer:'are' },
+    { prompt:'Fill in: "It ___ a sunny day."', type:'Grammar', level:'A1', answer:'is' },
+    { prompt:'Introduce yourself using three "To Be" sentences.', type:'Speaking', level:'A1', answer:'✅ Success if: uses am / is / are correctly in three different sentences (e.g. "I am María. I am 20. I am a student."). Speaks clearly from memory, not from written notes.' },
+    { prompt:'Change to negative: "She is a teacher."', type:'Grammar', level:'A1', answer:'"She is not (isn\'t) a teacher."' },
+    { prompt:'Fill in: "My parents ___ at work right now."', type:'Grammar', level:'A2', answer:'are' },
+    { prompt:'Fill in: "___ you tired after the gym?"', type:'Grammar', level:'A2', answer:'Are' },
+    { prompt:'Fill in: "We ___ (not) from Italy."', type:'Grammar', level:'A2', answer:'are not / aren\'t' },
+    { prompt:'Describe your best friend\'s personality and appearance using "is."', type:'Speaking', level:'A2', answer:'✅ Success if: uses "is" correctly in at least 3 sentences, combines appearance and personality adjectives (e.g. "She is tall and she is very funny."), and speaks with connected, fluent sentences.' },
+    { prompt:'Fill in: "Where ___ my keys?"', type:'Grammar', level:'A2', answer:'are' },
+    { prompt:'Make a question: "He / hungry?"', type:'Grammar', level:'A2', answer:'"Is he hungry?"' },
+    { prompt:'Fill in: "The news ___ very depressing lately."', type:'Grammar', level:'B1', answer:'is  ("news" is always singular in English)' },
+    { prompt:'Fill in: "Mathematics ___ my favorite subject."', type:'Grammar', level:'B1', answer:'is  (subject names are grammatically singular)' },
+    { prompt:'Describe your home country using 4 different "To Be" adjectives.', type:'Speaking', level:'B1', answer:'✅ Success if: uses is / are correctly with 4 distinct adjectives, gives a brief supporting detail for each (e.g. "It is mountainous — there are many peaks in the north."), and speaks for at least 30 seconds.' },
+    { prompt:'Correct the mistake: "The people is very nice here."', type:'Grammar', level:'B1', answer:'"The people ARE very nice here." — "people" is always plural.' },
+    { prompt:'Fill in: "Neither of us ___ ready for the exam."', type:'Grammar', level:'B1', answer:'is  ("neither of us" = singular subject)' },
+    { prompt:'Talk about your dream job. Why is it interesting?', type:'Speaking', level:'B1', answer:'✅ Success if: uses "is/are" accurately throughout, names the job and gives at least 2 reasons using because, speaks for ~30 seconds with minimal hesitation.' },
+    { prompt:'Fill in: "There ___ a lot of furniture in the room."', type:'Grammar', level:'B1', answer:'is  ("furniture" is uncountable → singular)' },
+    { prompt:'Change to a question: "The police are outside."', type:'Grammar', level:'B1', answer:'"Are the police outside?"' },
+    { prompt:'Compare two cities using "is/are" and adjectives.', type:'Speaking', level:'B1', answer:'✅ Success if: uses both "is" and "are" correctly, compares at least 2 features of each city, uses comparative adjectives (bigger, more expensive…), and speaks with minimal hesitation for ~30 seconds.' },
+  ],
+
+  // ── Cat 3: Present Simple – no verb to be ────────────────────────────────
+  [
+    { prompt:'Fill in: "I ___ (work) in an office."', type:'Grammar', level:'A1', answer:'work' },
+    { prompt:'Fill in: "He ___ (play) football."', type:'Grammar', level:'A1', answer:'plays  (he/she/it → add -s)' },
+    { prompt:'Fill in: "We ___ (eat) lunch at 12:00."', type:'Grammar', level:'A1', answer:'eat' },
+    { prompt:'Tell the group one thing you do every morning.', type:'Speaking', level:'A1', answer:'✅ Success if: uses the correct present simple form in the first person (e.g. "I brush my teeth every morning."), speaks in a full sentence, and includes a time expression.' },
+    { prompt:'Fill in: "She ___ (not/like) coffee."', type:'Grammar', level:'A1', answer:'does not like / doesn\'t like' },
+    { prompt:'Fill in: "___ you speak English?"', type:'Grammar', level:'A2', answer:'Do' },
+    { prompt:'Fill in: "My cat ___ (sleep) all day."', type:'Grammar', level:'A2', answer:'sleeps' },
+    { prompt:'Fill in: "Where ___ they live?"', type:'Grammar', level:'A2', answer:'do' },
+    { prompt:'Describe your typical Saturday routine.', type:'Speaking', level:'A2', answer:'✅ Success if: uses present simple throughout (not present continuous), mentions at least 4 activities, uses sequencing words (first, then, after that, in the evening), and speaks in full sentences.' },
+    { prompt:'Change to negative: "He goes to the gym."', type:'Grammar', level:'A2', answer:'"He does not (doesn\'t) go to the gym."' },
+    { prompt:'Fill in: "The train ___ (leave) at 9 PM."', type:'Grammar', level:'A2', answer:'leaves  (scheduled timetable → present simple)' },
+    { prompt:'Fill in: "Water ___ (boil) at 100 degrees."', type:'Grammar', level:'B1', answer:'boils  (scientific fact → present simple)' },
+    { prompt:'Fill in: "How often ___ your sister visit you?"', type:'Grammar', level:'B1', answer:'does' },
+    { prompt:'Discuss a habit you want to change.', type:'Speaking', level:'B1', answer:'✅ Success if: uses present simple to describe the current habit (e.g. "I eat too much junk food."), uses "want to + infinitive" for the desired change, gives a reason, and speaks for ~30 seconds.' },
+    { prompt:'Fill in: "She seldom ___ (watch) TV."', type:'Grammar', level:'B1', answer:'watches  (he/she/it + -es; "seldom" = frequency adverb)' },
+    { prompt:'Correct the mistake: "He don\'t has a car."', type:'Grammar', level:'B1', answer:'"He doesn\'t have a car." — use "does not" + base verb (no -s on "have").' },
+    { prompt:'Explain how to make a sandwich using present simple verbs.', type:'Speaking', level:'B1', answer:'✅ Success if: uses at least 5 present simple verbs (take, spread, put, cut, add…), uses sequencing words (first, then, next, finally), and speaks in full sentences without reading.' },
+    { prompt:'Fill in: "It ___ (take) two hours to get there."', type:'Grammar', level:'B1', answer:'takes' },
+    { prompt:'Make a question for: "He travels to Japan once a year."', type:'Grammar', level:'B1', answer:'"How often does he travel to Japan?" or "Does he travel to Japan once a year?"' },
+    { prompt:'Create 2 sentences: one using "always" and one using "never."', type:'Speaking', level:'B1', answer:'✅ Success if: places the adverb in the correct position (after "to be" OR between subject and main verb), uses present simple in both sentences, and both sentences are meaningful and original.' },
+  ],
+
+  // ── Cat 4: IT Vocabulary ──────────────────────────────────────────────────
+  [
+    { prompt:'Name this object: ⌨️', type:'Vocabulary', level:'A1', answer:'Keyboard' },
+    { prompt:'Name this object: 🖱️', type:'Vocabulary', level:'A1', answer:'Mouse' },
+    { prompt:'What do you use to see images on a computer? (A ______)', type:'Vocabulary', level:'A1', answer:'Monitor / Screen / Display' },
+    { prompt:'Name three pieces of hardware on your desk.', type:'Speaking', level:'A1', answer:'✅ Success if: names three correct hardware items (keyboard, mouse, monitor, speaker, webcam…), uses "a" or "an" correctly before each one, and pronounces them clearly.' },
+    { prompt:'Verb: To turn a computer "on" and "___."', type:'Vocabulary', level:'A1', answer:'off  (to turn off / to switch off)' },
+    { prompt:'What do you call the secret code to enter a website or app?', type:'Vocabulary', level:'A2', answer:'Password' },
+    { prompt:'Fill in: "I need to ___ this document for the meeting." (🖨️)', type:'Vocabulary', level:'A2', answer:'print' },
+    { prompt:'What is the short word for "Applications"?', type:'Vocabulary', level:'A2', answer:'Apps' },
+    { prompt:'Explain what a "Laptop" is to someone from 1950.', type:'Speaking', level:'A2', answer:'✅ Success if: avoids modern jargon without explaining it, gives at least 2 physical features and 1 function, uses simple present tense, and makes the explanation genuinely accessible.' },
+    { prompt:'Fill in: "I use a ___ to save my files and carry them around." (USB)', type:'Vocabulary', level:'A2', answer:'USB drive / flash drive / memory stick / pen drive' },
+    { prompt:'What is a "Folder" used for on a computer?', type:'Vocabulary', level:'A2', answer:'To organize and store files in one place, just like a physical folder for papers.' },
+    { prompt:'What does "Download" mean?', type:'Vocabulary', level:'B1', answer:'To transfer a file or data from the internet (or another device) onto your own device.' },
+    { prompt:'Define "Software" in your own words.', type:'Vocabulary', level:'B1', answer:'The programs and apps that run on a computer — you cannot touch it (e.g. Microsoft Word, your browser). The opposite of hardware.' },
+    { prompt:'Describe your favorite app and why you use it.', type:'Speaking', level:'B1', answer:'✅ Success if: names the app and its category (social, productivity…), explains at least 2 features using present simple, gives a personal reason for preferring it, and speaks for ~30 seconds.' },
+    { prompt:'Fill in: "The system is ___ because there is a virus."', type:'Vocabulary', level:'B1', answer:'infected / slow / corrupted  (accept any contextually appropriate adjective)' },
+    { prompt:'What is a "Browser"? Give a real example.', type:'Vocabulary', level:'B1', answer:'A browser is a program you use to access and navigate the internet (e.g. Chrome, Firefox, Safari, Edge).' },
+    { prompt:'What are the pros and cons of working "in the cloud"?', type:'Speaking', level:'B1', answer:'✅ Success if: gives at least 1 pro (accessible anywhere, easy to share, auto-backup…) and 1 con (needs internet, privacy/security risks, subscription cost…), uses present simple for general statements, and structures the answer clearly.' },
+    { prompt:'Fill in: "You need to ___ your computer to install the updates."', type:'Vocabulary', level:'B1', answer:'restart / reboot' },
+    { prompt:'What does "Backup" mean in computing?', type:'Vocabulary', level:'B1', answer:'To make and store a copy of your data so you don\'t lose it if something goes wrong (e.g. hard drive failure, virus).' },
+    { prompt:'Explain the difference between "Hardware" and "Software."', type:'Speaking', level:'B1', answer:'✅ Success if: clearly defines both (hardware = physical parts you can touch; software = programs/apps you cannot touch), gives at least one real example of each, and uses present simple throughout. Speaks for ~20 seconds.' },
+  ],
+];
+
+const CATEGORIES = [
+  "Articles",
+  "Question\nWords",
+  "Present Simple\n(verb to be)",
+  "Present Simple\n(no verb to be)",
+  "IT Vocabulary"
+];
+
+const POINTS = [50, 100, 200, 300, 400, 500];
+const WIN_TARGET = 3500;
+
+let teams = [];
+let usedCards = new Set();
+let activeCard = null;
+let boardCards = [];
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  buildStars();
+  selectRandomCards();
+  buildBoard();
+}
+
+function buildStars() {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2 + 1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${(Math.random()*3+2).toFixed(1)}s;animation-delay:${(Math.random()*3).toFixed(1)}s`;
+    c.appendChild(s);
+  }
+}
+
+// ─── RANDOM SELECTION: pick 6 from 20 per category ───────────────────────────
+function selectRandomCards() {
+  boardCards = ALL_CARDS.map(catCards => {
+    const shuffled = [...catCards].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 6);
+  });
+}
+
+// ─── SHUFFLE BUTTON ──────────────────────────────────────────────────────────
+function shuffleBoard(askConfirm) {
+  if (askConfirm && usedCards.size > 0) {
+    if (!confirm('Shuffling picks new random questions and resets the board.\nTeam scores are kept.\n\nContinue?')) return;
+  }
+  usedCards.clear();
+  selectRandomCards();
+  buildBoard();
+}
+
+// ─── BUILD BOARD ─────────────────────────────────────────────────────────────
+function buildBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  CATEGORIES.forEach(cat => {
+    const h = document.createElement('div');
+    h.className = 'category-header';
+    h.textContent = cat;
+    board.appendChild(h);
+  });
+
+  POINTS.forEach((pts, pi) => {
+    CATEGORIES.forEach((_, ci) => {
+      const key = `${ci}-${pi}`;
+      const used = usedCards.has(key);
+      const div = document.createElement('div');
+      div.className = 'card' + (used ? ' used' : '');
+      div.innerHTML = `<div class="card-points">${used ? '' : '$' + pts}</div>`;
+      if (!used) div.onclick = () => openCard(ci, pi, pts);
+      board.appendChild(div);
+    });
+  });
+}
+
+// ─── OPEN CARD ───────────────────────────────────────────────────────────────
+function openCard(ci, pi, pts) {
+  const card = boardCards[ci][pi];
+  activeCard = { ci, pi, pts };
+
+  document.getElementById('modal-category').textContent = CATEGORIES[ci].replace(/\n/g,' ');
+  document.getElementById('modal-points').textContent = '$' + pts;
+  document.getElementById('modal-type').textContent = card.type + ' · Level ' + card.level;
+  document.getElementById('modal-question').textContent = card.prompt;
+
+  // Reset reveal state
+  const box = document.getElementById('answer-box');
+  const btn = document.getElementById('btn-reveal');
+  box.classList.remove('visible');
+  btn.classList.remove('revealed');
+  btn.textContent = '👁 Reveal Answer';
+
+  const isSpeaking = card.type === 'Speaking';
+  document.getElementById('answer-label').textContent = isSpeaking ? 'Success Criteria' : 'Suggested Answer';
+  document.getElementById('answer-text').textContent = card.answer;
+
+  document.getElementById('modal').classList.add('active');
+}
+
+function toggleReveal() {
+  const box = document.getElementById('answer-box');
+  const btn = document.getElementById('btn-reveal');
+  const isOpen = box.classList.contains('visible');
+  box.classList.toggle('visible');
+  btn.classList.toggle('revealed', !isOpen);
+  btn.textContent = isOpen ? '👁 Reveal Answer' : '🙈 Hide Answer';
+}
+
+function closeModal() {
+  if (activeCard) {
+    usedCards.add(`${activeCard.ci}-${activeCard.pi}`);
+    activeCard = null;
+    buildBoard();
+  }
+  document.getElementById('modal').classList.remove('active');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+// ─── TEAMS ───────────────────────────────────────────────────────────────────
+function addTeam() {
+  const input = document.getElementById('team-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (teams.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+    alert('A team with that name already exists!'); return;
+  }
+  teams.push({ name, score: 0 });
+  input.value = '';
+  renderTeams();
+}
+
+document.getElementById('team-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTeam();
+});
+
+function renderTeams() {
+  const c = document.getElementById('teams-container');
+  if (!teams.length) {
+    c.innerHTML = '<div class="empty-teams">No teams yet — add one above!</div>';
+    return;
+  }
+  c.innerHTML = '';
+  teams.forEach((team, i) => {
+    const pct = Math.min(100, (team.score / WIN_TARGET) * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'team-row';
+    row.innerHTML = `
+      <div class="team-name-label">${esc(team.name)}</div>
+      <div class="team-total">${team.score.toLocaleString()} <span>pts</span></div>
+      <div class="score-controls">
+        <select class="score-select" id="sel-${i}">
+          ${POINTS.map(p=>`<option value="${p}">+$${p}</option>`).join('')}
+        </select>
+        <button class="btn-score" onclick="addScore(${i})">+ ADD</button>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" style="width:${pct}%"></div>
+      </div>`;
+    c.appendChild(row);
+  });
+}
+
+function addScore(i) {
+  teams[i].score += parseInt(document.getElementById(`sel-${i}`).value);
+  renderTeams();
+  if (teams[i].score >= WIN_TARGET) showWinner(teams[i]);
+}
+
+function esc(s) {
+  return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ─── RESETS ──────────────────────────────────────────────────────────────────
+function confirmResetCards() {
+  if (confirm('Reset the board?\n\nAll used cards will flip back. Team scores are NOT affected.')) {
+    usedCards.clear();
+    buildBoard();
+  }
+}
+
+function confirmResetScores() {
+  if (confirm('Reset all team scores to 0?\n\nThe board state is NOT affected.')) {
+    teams.forEach(t => t.score = 0);
+    renderTeams();
+  }
+}
+
+// ─── WINNER ──────────────────────────────────────────────────────────────────
+function showWinner(team) {
+  document.getElementById('winner-name').textContent = team.name;
+  document.getElementById('winner-score').textContent = team.score.toLocaleString() + ' points!';
+  document.getElementById('winner-overlay').classList.add('active');
+  spawnConfetti();
+}
+
+function closeWinner() {
+  document.getElementById('winner-overlay').classList.remove('active');
+  document.getElementById('confetti').innerHTML = '';
+}
+
+function spawnConfetti() {
+  const c = document.getElementById('confetti');
+  c.innerHTML = '';
+  const colors = ['#f5c518','#1a3cbe','#e63030','#1db954','#ffffff','#ff6b6b','#4ecdc4'];
+  for (let i = 0; i < 140; i++) {
+    const d = document.createElement('div');
+    d.className = 'confetti-dot';
+    d.style.cssText = `left:${Math.random()*100}%;top:0;background:${colors[~~(Math.random()*colors.length)]};width:${Math.random()*10+6}px;height:${Math.random()*10+6}px;animation-duration:${(Math.random()*2.5+1.5).toFixed(2)}s;animation-delay:${(Math.random()*1.5).toFixed(2)}s;border-radius:${Math.random()>.5?'50%':'2px'};`;
+    c.appendChild(d);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
