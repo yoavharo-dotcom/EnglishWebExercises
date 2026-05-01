@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Type or Drown — ESL Verb Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@400;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060d14;
+  --panel: #0a1520;
+  --panel2: #0e1e2e;
+  --border: rgba(0,200,255,0.15);
+  --cyan: #00c8ff;
+  --cyan-dim: rgba(0,200,255,0.12);
+  --cyan-glow: rgba(0,200,255,0.35);
+  --green: #00ff9d;
+  --green-dim: rgba(0,255,157,0.12);
+  --red: #ff3b5c;
+  --red-dim: rgba(255,59,92,0.12);
+  --amber: #ffb300;
+  --amber-dim: rgba(255,179,0,0.15);
+  --white: #e8f4ff;
+  --muted: #4a7a99;
+  --water-safe: #00c8ff;
+  --water-alert: #ffb300;
+  --water-danger: #ff3b5c;
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Orbitron', sans-serif;
+  --body: 'Exo 2', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:9999; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+}
+
+/* ── SCREENS ── */
+.screen { display:none; width:100%; max-width:900px; padding:20px; }
+.screen.active { display:flex; flex-direction:column; align-items:center; }
+
+/* ══════════════════════════════════
+   MENU SCREEN
+══════════════════════════════════ */
+#menu-screen {
+  min-height:100vh;
+  justify-content: center;
+  gap: 32px;
+  position: relative;
+}
+
+.menu-bg-lines {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridScroll 15s linear infinite;
+}
+@keyframes gridScroll { to { background-position: 40px 40px; } }
+
+.menu-glow {
+  position:fixed; top:20%; left:50%; transform:translateX(-50%);
+  width:600px; height:400px;
+  background: radial-gradient(ellipse, rgba(0,200,255,0.06) 0%, transparent 70%);
+  pointer-events:none; z-index:0;
+}
+
+.menu-content { position:relative; z-index:1; text-align:center; width:100%; }
+
+.menu-eyebrow {
+  font-family: var(--mono);
+  font-size:0.7rem; letter-spacing:6px; color:var(--cyan);
+  margin-bottom:16px; opacity:0.8;
+}
+
+.menu-title {
+  font-family: var(--display);
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight:900; line-height:1;
+  color: var(--cyan);
+  text-shadow: 0 0 60px rgba(0,200,255,0.5), 0 0 120px rgba(0,200,255,0.2);
+  margin-bottom: 8px;
+  animation: titlePulse 3s ease-in-out infinite;
+}
+@keyframes titlePulse {
+  0%,100% { text-shadow: 0 0 60px rgba(0,200,255,0.5), 0 0 120px rgba(0,200,255,0.2); }
+  50% { text-shadow: 0 0 80px rgba(0,200,255,0.8), 0 0 160px rgba(0,200,255,0.3); }
+}
+
+.menu-subtitle {
+  font-size:1rem; color:var(--muted); font-weight:600;
+  letter-spacing:2px; margin-bottom:48px;
+}
+
+.level-select-label {
+  font-family: var(--mono);
+  font-size:0.65rem; letter-spacing:4px; color:var(--muted);
+  text-transform:uppercase; margin-bottom:16px;
+}
+
+.level-grid {
+  display:grid; grid-template-columns: repeat(5,1fr);
+  gap:10px; max-width:500px; margin:0 auto 32px;
+}
+
+.level-btn {
+  aspect-ratio:1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius:8px;
+  font-family: var(--display);
+  font-size:1rem; font-weight:700;
+  color: var(--muted);
+  cursor:pointer;
+  transition: all 0.2s;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:4px;
+  position:relative;
+  overflow:hidden;
+}
+.level-btn .lb-num { font-size:1.1rem; }
+.level-btn .lb-type { font-size:0.5rem; letter-spacing:1px; text-transform:uppercase; opacity:0.6; }
+
+.level-btn.unlocked {
+  color: var(--cyan);
+  border-color: rgba(0,200,255,0.3);
+  cursor:pointer;
+}
+.level-btn.unlocked:hover {
+  background: var(--cyan-dim);
+  border-color: var(--cyan);
+  transform:scale(1.05);
+  box-shadow: 0 0 20px rgba(0,200,255,0.2);
+}
+.level-btn.completed {
+  color: var(--green);
+  border-color: rgba(0,255,157,0.3);
+}
+.level-btn.completed::after {
+  content:'✓';
+  position:absolute; top:4px; right:6px;
+  font-size:0.6rem; color:var(--green);
+}
+.level-btn.locked { opacity:0.3; cursor:not-allowed; }
+
+.btn-primary {
+  font-family: var(--display);
+  font-size:0.85rem; font-weight:700; letter-spacing:3px;
+  padding: 14px 40px;
+  background: transparent;
+  border: 2px solid var(--cyan);
+  color: var(--cyan);
+  border-radius:4px;
+  cursor:pointer;
+  text-transform:uppercase;
+  transition: all 0.2s;
+  position:relative; overflow:hidden;
+}
+.btn-primary::before {
+  content:'';
+  position:absolute; inset:0;
+  background: var(--cyan);
+  transform:translateX(-101%);
+  transition: transform 0.25s ease;
+  z-index:0;
+}
+.btn-primary:hover::before { transform:translateX(0); }
+.btn-primary:hover { color: var(--bg); }
+.btn-primary span { position:relative; z-index:1; }
+
+.how-to-play {
+  max-width:540px; margin-top:8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius:12px;
+  padding:24px 28px;
+  text-align:left;
+}
+.how-to-play h3 {
+  font-family:var(--display); font-size:0.75rem;
+  letter-spacing:4px; color:var(--cyan); margin-bottom:16px;
+}
+.how-to-play ol {
+  list-style:none; display:flex; flex-direction:column; gap:10px;
+}
+.how-to-play li {
+  font-size:0.82rem; color:var(--muted); font-weight:600;
+  display:flex; gap:12px; align-items:flex-start; line-height:1.5;
+}
+.how-to-play li .step-n {
+  font-family:var(--mono); color:var(--cyan); font-size:0.75rem;
+  min-width:20px; padding-top:1px;
+}
+.alert-legend {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:6px; margin-top:14px;
+}
+.legend-item {
+  font-family:var(--mono); font-size:0.68rem;
+  display:flex; align-items:center; gap:8px; color:var(--muted);
+}
+.legend-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+}
+
+/* ══════════════════════════════════
+   GAME SCREEN
+══════════════════════════════════ */
+#game-screen { min-height:100vh; gap:0; padding:0; }
+
+/* TOP BAR */
+.top-bar {
+  width:100%; background:var(--panel);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:flex; align-items:center; gap:16px;
+  flex-wrap:wrap;
+}
+.top-bar-title {
+  font-family:var(--display); font-size:0.8rem;
+  color:var(--cyan); letter-spacing:3px; font-weight:700;
+  flex:0 0 auto;
+}
+.top-bar-divider {
+  width:1px; height:20px; background:var(--border); flex-shrink:0;
+}
+.top-info {
+  display:flex; gap:20px; align-items:center; flex:1;
+  flex-wrap:wrap;
+}
+.info-chip {
+  font-family:var(--mono); font-size:0.72rem; color:var(--muted);
+  display:flex; align-items:center; gap:6px;
+}
+.info-chip .val {
+  color:var(--white); font-size:0.82rem;
+}
+.top-bar-menu {
+  font-family:var(--mono); font-size:0.65rem; letter-spacing:2px;
+  color:var(--muted); background:transparent; border:1px solid var(--border);
+  padding:5px 12px; border-radius:4px; cursor:pointer;
+  transition:all 0.2s; text-transform:uppercase;
+}
+.top-bar-menu:hover { color:var(--cyan); border-color:var(--cyan); }
+
+/* MAIN GAME AREA */
+.game-area {
+  display:flex;
+  width:100%; flex:1;
+  gap:0;
+  padding:20px;
+  align-items:flex-start;
+  justify-content:center;
+  max-width:900px;
+}
+
+/* TANK */
+.tank-wrapper {
+  display:flex; flex-direction:column; align-items:center;
+  gap:12px; flex-shrink:0;
+}
+
+.tank-container {
+  position:relative;
+  width:200px; height:380px;
+}
+
+/* Outer tank shell */
+.tank-outer {
+  position:absolute; inset:0;
+  border:3px solid rgba(0,200,255,0.4);
+  border-radius:12px;
+  background: rgba(0,10,20,0.8);
+  box-shadow:
+    0 0 30px rgba(0,200,255,0.1),
+    inset 0 0 30px rgba(0,0,0,0.5);
+  overflow:hidden;
+}
+
+/* Water fill */
+.water-fill {
+  position:absolute; bottom:0; left:0; right:0;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.8s ease;
+  background: linear-gradient(180deg, rgba(0,200,255,0.7) 0%, rgba(0,100,200,0.9) 100%);
+}
+
+.water-surface {
+  position:absolute; top:0; left:0; right:0; height:8px;
+  background: rgba(255,255,255,0.25);
+  animation: waterWave 2s ease-in-out infinite;
+}
+@keyframes waterWave {
+  0%,100% { transform:scaleX(1) translateX(0); opacity:0.25; }
+  50% { transform:scaleX(1.02) translateX(-2px); opacity:0.4; }
+}
+
+/* Bubbles */
+.bubble {
+  position:absolute; border-radius:50%;
+  background: rgba(255,255,255,0.2);
+  animation: bubbleRise linear infinite;
+  pointer-events:none;
+}
+@keyframes bubbleRise {
+  from { transform:translateY(0) scale(1); opacity:0.3; }
+  to   { transform:translateY(-400px) scale(0.5); opacity:0; }
+}
+
+/* Alert flash overlay */
+.tank-flash {
+  position:absolute; inset:0; border-radius:10px;
+  pointer-events:none; opacity:0;
+  transition: opacity 0.1s;
+}
+.tank-flash.flash { animation: tankFlash 0.5s ease; }
+@keyframes tankFlash {
+  0% { opacity:0; }
+  30% { opacity:0.4; }
+  100% { opacity:0; }
+}
+
+/* Water level markers */
+.level-markers {
+  position:absolute; right:-44px; top:0; bottom:0;
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:2px 0;
+}
+.level-marker {
+  display:flex; align-items:center; gap:4px;
+  font-family:var(--mono); font-size:0.55rem;
+  color:var(--muted);
+}
+.level-marker.marker-death { color:#ff3b5c; font-weight:bold; }
+.level-marker.marker-high  { color:#ff7a3b; }
+.level-marker.marker-alert { color:#ffb300; }
+.level-marker.marker-caution { color:#ffe500; }
+.level-marker.marker-safe  { color:#00ff9d; }
+.marker-line {
+  width:8px; height:1px; background:currentColor; opacity:0.6;
+}
+
+/* Percentage display */
+.water-pct {
+  position:absolute; bottom:10px; left:0; right:0; text-align:center;
+  font-family:var(--mono); font-size:1.1rem; font-weight:bold;
+  color:rgba(255,255,255,0.9);
+  text-shadow:0 0 10px rgba(0,0,0,0.8);
+  z-index:2;
+}
+
+/* Alert status below tank */
+.alert-status {
+  font-family:var(--mono); font-size:0.65rem; letter-spacing:3px;
+  padding:5px 14px; border-radius:3px;
+  border:1px solid currentColor;
+  text-transform:uppercase; transition: all 0.5s;
+}
+
+/* Round progress */
+.round-progress {
+  display:flex; gap:6px;
+}
+.round-dot {
+  width:10px; height:10px; border-radius:50%;
+  border:2px solid var(--muted);
+  transition:all 0.3s;
+}
+.round-dot.done { background:var(--green); border-color:var(--green); }
+.round-dot.active { border-color:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+/* RIGHT PANEL */
+.right-panel {
+  flex:1; display:flex; flex-direction:column;
+  gap:16px; max-width:520px;
+  padding-left:28px;
+}
+
+/* Timer bar */
+.timer-bar-wrap {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:14px 18px;
+}
+.timer-label {
+  font-family:var(--mono); font-size:0.6rem; letter-spacing:3px;
+  color:var(--muted); margin-bottom:8px;
+  display:flex; justify-content:space-between;
+}
+.timer-big {
+  font-family: var(--display);
+  font-size: 3rem; font-weight: 900;
+  color: var(--cyan);
+  text-align: center;
+  letter-spacing: 4px;
+  line-height: 1;
+  margin-bottom: 10px;
+  text-shadow: 0 0 30px rgba(0,200,255,0.4);
+  transition: color 0.5s, text-shadow 0.5s;
+}
+.timer-big.warn  { color: var(--amber); text-shadow: 0 0 30px rgba(255,179,0,0.5); }
+.timer-big.danger{ color: var(--red);   text-shadow: 0 0 30px rgba(255,59,92,0.6); animation: timerPulse 0.5s ease-in-out infinite alternate; }
+@keyframes timerPulse { from { opacity:1; } to { opacity:0.6; } }
+.timer-track {
+  height:8px; background:rgba(255,255,255,0.06);
+  border-radius:4px; overflow:hidden;
+}
+.timer-fill {
+  height:100%; border-radius:4px;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  transition: width 1s linear, background 0.5s;
+}
+.timer-delta {
+  font-family: var(--mono); font-size: 0.8rem;
+  font-weight: bold; text-align: center;
+  margin-top: 6px; min-height: 1.2em;
+  letter-spacing: 2px;
+  transition: opacity 0.3s;
+}
+.timer-delta.plus  { color: var(--green); }
+.timer-delta.minus { color: var(--red); }
+
+/* Verb terminal */
+.verb-terminal {
+  background: #020a10;
+  border:1px solid rgba(0,200,255,0.3);
+  border-radius:8px; padding:20px;
+  position:relative;
+  box-shadow: inset 0 0 40px rgba(0,200,255,0.03);
+}
+.terminal-header {
+  font-family:var(--mono); font-size:0.6rem;
+  letter-spacing:3px; color:var(--muted);
+  margin-bottom:12px;
+  display:flex; align-items:center; gap:8px;
+}
+.terminal-dot { width:6px; height:6px; border-radius:50%; }
+
+.verb-prompt {
+  font-family:var(--mono); font-size:0.7rem; color:var(--muted);
+  margin-bottom:6px;
+}
+.verb-display {
+  font-family:var(--display); font-size:2.2rem; font-weight:900;
+  color:var(--white);
+  text-shadow:0 0 30px rgba(0,200,255,0.3);
+  letter-spacing:2px; margin-bottom:4px;
+}
+.verb-spanish {
+  font-family:var(--mono); font-size:0.65rem;
+  color:var(--muted); letter-spacing:2px;
+}
+
+/* Input section */
+.inputs-section {
+  display:flex; flex-direction:column; gap:12px;
+}
+
+.input-group {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:14px 16px;
+  transition: border-color 0.3s, background 0.3s;
+}
+.input-group.correct {
+  border-color:var(--green);
+  background:var(--green-dim);
+}
+.input-group.incorrect {
+  border-color:var(--red);
+  background:var(--red-dim);
+}
+.input-group.locked-correct {
+  border-color:rgba(0,255,157,0.2);
+  background:var(--green-dim);
+  opacity:0.7;
+}
+
+.input-label {
+  font-family:var(--mono); font-size:0.6rem;
+  letter-spacing:3px; color:var(--muted);
+  margin-bottom:8px; text-transform:uppercase;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.input-feedback {
+  font-size:0.65rem; letter-spacing:1px;
+}
+.input-feedback.ok { color:var(--green); }
+.input-feedback.err { color:var(--red); }
+
+.letter-inputs {
+  display:flex; gap:4px; flex-wrap:wrap; align-items:flex-end;
+}
+.letter-box {
+  width:28px; height:36px;
+  background:rgba(255,255,255,0.04);
+  border:0; border-bottom:2px solid var(--muted);
+  color:var(--white); font-family:var(--mono);
+  font-size:1rem; text-align:center; text-transform:lowercase;
+  outline:none; border-radius:2px 2px 0 0;
+  transition:border-color 0.2s;
+  caret-color:var(--cyan);
+}
+.letter-box:focus { border-bottom-color:var(--cyan); background:rgba(0,200,255,0.05); }
+.letter-box.filled { border-bottom-color:rgba(0,200,255,0.4); }
+.letter-box.box-correct { border-bottom-color:var(--green); color:var(--green); background:rgba(0,255,157,0.06); }
+.letter-box.box-error   { border-bottom-color:var(--red);   color:var(--red);   background:rgba(255,59,92,0.06); }
+.letter-box:disabled { cursor:default; }
+.letter-separator {
+  font-family:var(--mono); font-size:0.8rem;
+  color:var(--muted); padding:0 4px; padding-bottom:8px;
+}
+
+.submit-btn {
+  font-family:var(--display); font-size:0.8rem;
+  font-weight:700; letter-spacing:3px; text-transform:uppercase;
+  padding:14px; width:100%;
+  background:transparent; border:2px solid var(--cyan);
+  color:var(--cyan); border-radius:6px; cursor:pointer;
+  transition:all 0.2s; position:relative; overflow:hidden;
+}
+.submit-btn::before {
+  content:''; position:absolute; inset:0;
+  background:var(--cyan); transform:translateX(-101%);
+  transition:transform 0.25s; z-index:0;
+}
+.submit-btn:hover::before { transform:translateX(0); }
+.submit-btn:hover { color:var(--bg); }
+.submit-btn span { position:relative; z-index:1; }
+.submit-btn:disabled {
+  opacity:0.4; cursor:not-allowed;
+}
+.submit-btn:disabled::before { display:none; }
+.submit-btn:disabled:hover { color:var(--cyan); }
+
+/* Score panel */
+.score-panel {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; padding:14px 16px;
+  display:flex; justify-content:space-around;
+}
+.score-item { text-align:center; }
+.score-val {
+  font-family:var(--display); font-size:1.4rem;
+  font-weight:900; color:var(--cyan);
+}
+.score-lbl {
+  font-family:var(--mono); font-size:0.55rem;
+  letter-spacing:2px; color:var(--muted); margin-top:2px;
+}
+
+/* Result popup */
+.result-popup {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.8);
+  background:var(--panel2); border:2px solid var(--cyan);
+  border-radius:16px; padding:40px 48px; text-align:center;
+  z-index:1000; pointer-events:none; opacity:0;
+  transition:all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width:320px;
+  box-shadow: 0 0 80px rgba(0,200,255,0.2);
+}
+.result-popup.show {
+  opacity:1; transform:translate(-50%,-50%) scale(1);
+  pointer-events:all;
+}
+.result-popup.win { border-color:var(--green); box-shadow:0 0 80px rgba(0,255,157,0.2); }
+.result-popup.lose { border-color:var(--red); box-shadow:0 0 80px rgba(255,59,92,0.2); }
+
+.popup-icon { font-size:3rem; margin-bottom:16px; display:block; }
+.popup-title {
+  font-family:var(--display); font-size:1.6rem; font-weight:900;
+  margin-bottom:8px;
+}
+.popup-sub {
+  font-family:var(--mono); font-size:0.75rem;
+  color:var(--muted); letter-spacing:2px; margin-bottom:24px;
+}
+.popup-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.popup-btn {
+  font-family:var(--display); font-size:0.7rem;
+  font-weight:700; letter-spacing:2px;
+  padding:10px 24px; border-radius:4px; cursor:pointer;
+  text-transform:uppercase; transition:all 0.2s; border:2px solid;
+  background:transparent;
+}
+.popup-btn.primary {
+  border-color:var(--cyan); color:var(--cyan);
+}
+.popup-btn.primary:hover { background:var(--cyan); color:var(--bg); }
+.popup-btn.secondary {
+  border-color:var(--muted); color:var(--muted);
+}
+.popup-btn.secondary:hover { border-color:var(--white); color:var(--white); }
+
+/* Overlay backdrop */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; }
+.overlay.show { display:block; }
+
+/* ── SHARE CARD ── */
+.share-card {
+  background: #020a10;
+  border: 1px solid rgba(0,200,255,0.25);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 16px 0 4px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: var(--white);
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.share-btn {
+  font-family: var(--display); font-size: 0.7rem;
+  font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  padding: 10px 22px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--green); color: var(--green);
+  background: transparent; transition: all 0.2s;
+}
+.share-btn:hover { background: var(--green); color: var(--bg); }
+.share-btn.copied { border-color: var(--cyan); color: var(--cyan); }
+.stars { color: var(--amber); letter-spacing: 2px; }
+</style>
+<style>
+@media(max-width:640px) {
+  .game-area { flex-direction:column; align-items:center; padding:12px; }
+  .tank-container { width:160px; height:300px; }
+  .right-panel { padding-left:0; max-width:100%; }
+  .level-grid { grid-template-columns:repeat(5,1fr); max-width:320px; }
+  .menu-title { font-size:3rem; }
+  .level-markers { right:-40px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     MENU SCREEN
+══════════════════════════════════ -->
+<div id="menu-screen" class="screen active">
+  <div class="menu-bg-lines"></div>
+  <div class="menu-glow"></div>
+  <div class="menu-content">
+    <div class="menu-eyebrow">// ESL GAME ZONE — LAB TERMINAL //</div>
+    <h1 class="menu-title">TYPE OR<br>DROWN</h1>
+    <p class="menu-subtitle">Conjugate the verbs. Pump the water. Survive.</p>
+
+    <div class="level-select-label">Select Level</div>
+    <div class="level-grid" id="level-grid"></div>
+
+    <div class="how-to-play">
+      <h3>// HOW TO PLAY //</h3>
+      <ol>
+        <li><span class="step-n">01</span><span>A verb appears on screen. Type its <strong>Past Simple</strong> and <strong>Past Participle</strong> forms in the letter boxes.</span></li>
+        <li><span class="step-n">02</span><span>Press <strong>ENTER</strong> or click <em>CONFIRM ANSWER</em> to submit. Correct answers pump water out of the tank.</span></li>
+        <li><span class="step-n">03</span><span>A wrong answer causes a <strong>water burst</strong> (+10% water level). Fix the red boxes and try again.</span></li>
+        <li><span class="step-n">04</span><span>Conjugate <strong>6 verbs</strong> correctly per level to win. Don't let the water reach <strong>100%</strong> or it's Game Over!</span></li>
+        <li><span class="step-n">05</span><span>Each level gets <strong>faster</strong>. Levels 1–3 use regular verbs, 4–7 common irregulars, 8–10 advanced irregulars.</span></li>
+      </ol>
+      <div class="alert-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#00ff9d"></div>0–29% — SAFE</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffe500"></div>30–49% — CAUTION</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffb300"></div>50–79% — ALERT</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff7a3b"></div>80–89% — HIGH ALERT</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff3b5c"></div>90–99% — DANGER</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff003c"></div>100% — GAME OVER</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════ -->
+<div id="game-screen" class="screen">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-title">TYPE OR DROWN</div>
+    <div class="top-bar-divider"></div>
+    <div class="top-info">
+      <div class="info-chip">LVL <span class="val" id="hud-level">1</span></div>
+      <div class="info-chip">ROUND <span class="val" id="hud-round">1</span>/3</div>
+      <div class="info-chip">VERB <span class="val" id="hud-verb-num">1</span>/6</div>
+      <div class="info-chip">WRONG <span class="val" id="hud-wrong">0</span></div>
+    </div>
+    <button class="top-bar-menu" onclick="returnToMenu()">⬅ MENU</button>
+  </div>
+
+  <!-- GAME AREA -->
+  <div class="game-area">
+
+    <!-- TANK -->
+    <div class="tank-wrapper">
+      <div class="tank-container">
+        <div class="tank-outer">
+          <div class="water-fill" id="water-fill">
+            <div class="water-surface"></div>
+          </div>
+          <!-- Bubbles injected by JS -->
+          <div class="tank-flash" id="tank-flash"></div>
+        </div>
+        <!-- Level markers -->
+        <div class="level-markers">
+          <div class="level-marker marker-death"><div class="marker-line"></div>100%</div>
+          <div class="level-marker marker-high"><div class="marker-line"></div>90%</div>
+          <div class="level-marker marker-high"><div class="marker-line"></div>80%</div>
+          <div class="level-marker marker-alert"><div class="marker-line"></div>70%</div>
+          <div class="level-marker marker-alert"><div class="marker-line"></div>60%</div>
+          <div class="level-marker marker-alert"><div class="marker-line"></div>50%</div>
+          <div class="level-marker marker-caution"><div class="marker-line"></div>40%</div>
+          <div class="level-marker marker-caution"><div class="marker-line"></div>30%</div>
+          <div class="level-marker marker-safe"><div class="marker-line"></div>20%</div>
+          <div class="level-marker marker-safe"><div class="marker-line"></div>10%</div>
+          <div class="level-marker marker-safe"><div class="marker-line"></div>0%</div>
+        </div>
+        <div class="water-pct" id="water-pct">0%</div>
+      </div>
+      <div class="alert-status" id="alert-status" style="color:var(--green);border-color:var(--green)">◉ SAFE</div>
+      <div class="round-progress" id="round-progress">
+        <div class="round-dot active" id="rd0"></div>
+        <div class="round-dot" id="rd1"></div>
+        <div class="round-dot" id="rd2"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- Timer -->
+      <div class="timer-bar-wrap">
+        <div class="timer-label">
+          <span>// TIME REMAINING</span>
+        </div>
+        <div class="timer-big" id="timer-display">5:00</div>
+        <div class="timer-track">
+          <div class="timer-fill" id="timer-fill" style="width:100%"></div>
+        </div>
+        <div class="timer-delta" id="timer-delta"></div>
+      </div>
+
+      <!-- Verb terminal -->
+      <div class="verb-terminal">
+        <div class="terminal-header">
+          <div class="terminal-dot" style="background:#ff3b5c"></div>
+          <div class="terminal-dot" style="background:#ffb300"></div>
+          <div class="terminal-dot" style="background:#00ff9d"></div>
+          <span style="margin-left:4px">CONJUGATION TERMINAL</span>
+        </div>
+        <div class="verb-prompt">$ conjugate --verb</div>
+        <div class="verb-display" id="verb-display">—</div>
+        <div class="verb-spanish" id="verb-spanish">// loading...</div>
+      </div>
+
+      <!-- Inputs -->
+      <div class="inputs-section">
+        <div class="input-group" id="ig-past">
+          <div class="input-label">
+            Past Simple
+            <span class="input-feedback" id="fb-past"></span>
+          </div>
+          <div class="letter-inputs" id="boxes-past"></div>
+        </div>
+        <div class="input-group" id="ig-participle">
+          <div class="input-label">
+            Past Participle
+            <span class="input-feedback" id="fb-participle"></span>
+          </div>
+          <div class="letter-inputs" id="boxes-participle"></div>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitAnswer()">
+        <span>⚡ Confirm Answer</span>
+      </button>
+
+      <!-- Score -->
+      <div class="score-panel">
+        <div class="score-item">
+          <div class="score-val" id="score-correct">0</div>
+          <div class="score-lbl">Correct</div>
+        </div>
+        <div class="score-item">
+          <div class="score-val" id="score-wrong" style="color:var(--red)">0</div>
+          <div class="score-lbl">Errors</div>
+        </div>
+        <div class="score-item">
+          <div class="score-val" id="score-verbs" style="color:var(--amber)">0/6</div>
+          <div class="score-lbl">Verbs Done</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ RESULT POPUP ══════════ -->
+<div class="overlay" id="overlay"></div>
+<div class="result-popup" id="result-popup">
+  <span class="popup-icon" id="popup-icon">🌊</span>
+  <div class="popup-title" id="popup-title">Level Clear!</div>
+  <div class="popup-sub" id="popup-sub">THE LAB IS SAFE</div>
+  <div class="popup-btns" id="popup-btns"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// VERB DATA
+// Format: [infinitive, past_simple[], past_participle[], spanish]
+// Arrays allow multiple accepted spellings
+// ══════════════════════════════════════════════════════
+// ── 10 verbs per level, 30 per tier ──────────────────
+// Tiers: Easy=1-3 (regular), Medium=4-7 (common irr), Hard=8-10 (advanced irr)
+// At runtime the full tier pool (30) is shuffled and 6 are picked per play.
+const VERB_LEVELS = {
+  // ── TIER 1: REGULAR VERBS (levels 1-3) ──────────────
+  1: [
+    ["accept","accepted","accepted","to accept"],
+    ["start","started","started","to start"],
+    ["visit","visited","visited","to visit"],
+    ["need","needed","needed","to need"],
+    ["want","wanted","wanted","to want"],
+    ["end","ended","ended","to end"],
+    ["wait","waited","waited","to wait"],
+    ["count","counted","counted","to count"],
+    ["expect","expected","expected","to expect"],
+    ["plant","planted","planted","to plant"],
+  ],
+  2: [
+    ["ask","asked","asked","to ask"],
+    ["cook","cooked","cooked","to cook"],
+    ["help","helped","helped","to help"],
+    ["walk","walked","walked","to walk"],
+    ["talk","talked","talked","to talk"],
+    ["work","worked","worked","to work"],
+    ["stop","stopped","stopped","to stop"],
+    ["jump","jumped","jumped","to jump"],
+    ["wash","washed","washed","to wash"],
+    ["finish","finished","finished","to finish"],
+  ],
+  3: [
+    ["arrive","arrived","arrived","to arrive"],
+    ["change","changed","changed","to change"],
+    ["clean","cleaned","cleaned","to clean"],
+    ["enjoy","enjoyed","enjoyed","to enjoy"],
+    ["listen","listened","listened","to listen"],
+    ["play","played","played","to play"],
+    ["study","studied","studied","to study"],
+    ["travel","traveled","traveled","to travel"],
+    ["open","opened","opened","to open"],
+    ["follow","followed","followed","to follow"],
+  ],
+  // ── TIER 2: COMMON IRREGULARS (levels 4-7) ──────────
+  4: [
+    ["go","went","gone","to go"],
+    ["do","did","done","to do"],
+    ["have","had","had","to have"],
+    ["say","said","said","to say"],
+    ["get","got",["got","gotten"],"to get"],
+    ["make","made","made","to make"],
+    ["know","knew","known","to know"],
+    ["think","thought","thought","to think"],
+    ["be",["was","were"],"been","to be"],
+    ["become","became","become","to become"],
+  ],
+  5: [
+    ["come","came","come","to come"],
+    ["see","saw","seen","to see"],
+    ["take","took","taken","to take"],
+    ["give","gave","given","to give"],
+    ["find","found","found","to find"],
+    ["tell","told","told","to tell"],
+    ["buy","bought","bought","to buy"],
+    ["feel","felt","felt","to feel"],
+    ["leave","left","left","to leave"],
+    ["put","put","put","to put"],
+  ],
+  6: [
+    ["write","wrote","written","to write"],
+    ["read","read","read","to read"],
+    ["send","sent","sent","to send"],
+    ["run","ran","run","to run"],
+    ["eat","ate","eaten","to eat"],
+    ["drink","drank","drunk","to drink"],
+    ["sleep","slept","slept","to sleep"],
+    ["meet","met","met","to meet"],
+    ["sit","sat","sat","to sit"],
+    ["stand","stood","stood","to stand"],
+  ],
+  7: [
+    ["break","broke","broken","to break"],
+    ["choose","chose","chosen","to choose"],
+    ["drive","drove","driven","to drive"],
+    ["speak","spoke","spoken","to speak"],
+    ["teach","taught","taught","to teach"],
+    ["catch","caught","caught","to catch"],
+    ["lose","lost","lost","to lose"],
+    ["keep","kept","kept","to keep"],
+    ["hold","held","held","to hold"],
+    ["pay","paid","paid","to pay"],
+  ],
+  // ── TIER 3: ADVANCED IRREGULARS (levels 8-10) ───────
+  8: [
+    ["arise","arose","arisen","to arise"],
+    ["bear","bore",["borne","born"],"to bear"],
+    ["bind","bound","bound","to bind"],
+    ["bleed","bled","bled","to bleed"],
+    ["breed","bred","bred","to breed"],
+    ["cling","clung","clung","to cling"],
+    ["creep","crept","crept","to creep"],
+    ["forbid","forbade","forbidden","to forbid"],
+    ["forsake","forsook","forsaken","to forsake"],
+    ["flee","fled","fled","to flee"],
+  ],
+  9: [
+    ["freeze","froze","frozen","to freeze"],
+    ["grind","ground","ground","to grind"],
+    ["kneel","knelt","knelt","to kneel"],
+    ["leap","leapt","leapt","to leap"],
+    ["lean","leant","leant","to lean"],
+    ["shrink","shrank","shrunk","to shrink"],
+    ["spin","spun","spun","to spin"],
+    ["stride","strode","stridden","to stride"],
+    ["spit","spat","spat","to spit"],
+    ["sting","stung","stung","to sting"],
+  ],
+  10: [
+    ["swear","swore","sworn","to swear"],
+    ["tread","trod","trodden","to tread"],
+    ["undergo","underwent","undergone","to undergo"],
+    ["undertake","undertook","undertaken","to undertake"],
+    ["weave","wove","woven","to weave"],
+    ["wring","wrung","wrung","to wring"],
+    ["withdraw","withdrew","withdrawn","to withdraw"],
+    ["strike","struck","struck","to strike"],
+    ["spring","sprang","sprung","to spring"],
+    ["strive","strove","striven","to strive"],
+  ]
+};
+
+// Tier groupings for cross-level pool mixing
+const TIER_LEVELS = {
+  easy:   [1, 2, 3],
+  medium: [4, 5, 6, 7],
+  hard:   [8, 9, 10]
+};
+
+function getTierForLevel(level) {
+  if (level <= 3) return 'easy';
+  if (level <= 7) return 'medium';
+  return 'hard';
+}
+
+// Build a shuffled pool of 6 unique verbs drawn from the full 30-verb tier
+function buildVerbPool(level) {
+  const tier = getTierForLevel(level);
+  const levels = TIER_LEVELS[tier];
+  // Combine all verbs from every level in this tier
+  const pool = [];
+  levels.forEach(l => pool.push(...VERB_LEVELS[l]));
+  shuffle(pool);
+  return pool.slice(0, 6); // pick 6 unique verbs
+}
+
+// Time limits per level in seconds (5min → 1min)
+const LEVEL_TIMES = {1:300,2:270,3:240,4:210,5:180,6:150,7:120,8:90,9:60,10:60};
+
+// Penalty/reward in seconds per level group
+// Easy 1-3: wrong -15s, correct +5s
+// Medium 4-7: wrong -10s, correct +6s
+// Hard 8-10: wrong -5s, correct +7s
+function getLevelPenalty(level) {
+  if (level <= 3) return 15;
+  if (level <= 7) return 10;
+  return 5;
+}
+function getLevelReward(level) {
+  if (level <= 3) return 5;
+  if (level <= 7) return 6;
+  return 7;
+}
+
+// ══════════════════════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════════════════════
+let currentLevel = 1;
+let currentRound = 1;       // 1-3
+let verbsInRound = [];       // shuffled verbs for this round
+let verbIndex = 0;           // 0-5 (6 verbs needed)
+let verbsDone = 0;           // total correct this level (needs 6 = all 3 rounds × 2 verbs each… actually 6 total)
+let waterPct = 0;
+let timerSec = 300;
+let timerMax = 300;
+let timerInterval = null;
+let waterInterval = null;
+let gameActive = false;
+let wrongCount = 0;
+let correctCount = 0;
+let unlockedLevels = [1];
+let completedLevels = [];
+
+// current verb data
+let curVerb = null;
+let pastLocked = false;
+let participleLocked = false;
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+function init() {
+  const saved = localStorage.getItem('tod_progress');
+  if (saved) {
+    const p = JSON.parse(saved);
+    unlockedLevels = p.unlocked || [1];
+    completedLevels = p.completed || [];
+  }
+  buildLevelGrid();
+  spawnBubbles();
+}
+
+function saveProgress() {
+  localStorage.setItem('tod_progress', JSON.stringify({
+    unlocked: unlockedLevels,
+    completed: completedLevels
+  }));
+}
+
+// ══════════════════════════════════════════════════════
+// MENU
+// ══════════════════════════════════════════════════════
+function buildLevelGrid() {
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  const typeLabels = {1:'REG',2:'REG',3:'REG',4:'IRR',5:'IRR',6:'IRR',7:'IRR',8:'ADV',9:'ADV',10:'ADV'};
+  for (let i=1;i<=10;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'level-btn';
+    const isUnlocked = unlockedLevels.includes(i);
+    const isCompleted = completedLevels.includes(i);
+    if (isCompleted) btn.classList.add('completed','unlocked');
+    else if (isUnlocked) btn.classList.add('unlocked');
+    else btn.classList.add('locked');
+    btn.innerHTML = `<span class="lb-num">${i}</span><span class="lb-type">${typeLabels[i]}</span>`;
+    if (isUnlocked || isCompleted) btn.onclick = () => startLevel(i);
+    grid.appendChild(btn);
+  }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function returnToMenu() {
+  stopGame();
+  hidePopup();
+  showScreen('menu-screen');
+  buildLevelGrid();
+}
+
+// ══════════════════════════════════════════════════════
+// GAME START
+// ══════════════════════════════════════════════════════
+function startLevel(level) {
+  currentLevel = level;
+  currentRound = 1;
+  verbsDone = 0;
+  wrongCount = 0;
+  correctCount = 0;
+  waterPct = 0;
+  gameActive = true;
+
+  timerMax = LEVEL_TIMES[level];
+  timerSec = timerMax;
+
+  // Pick 6 random verbs from the full 30-verb tier pool
+  verbsInRound = buildVerbPool(level);
+  verbIndex = 0;
+
+  updateHUD();
+  showScreen('game-screen');
+  syncWaterToTimer();
+  updateTimerDisplay();
+  loadVerb();
+  startTimers();
+  updateRoundDots();
+}
+
+function startTimers() {
+  stopGame();
+  // Single interval — timer drives water level directly
+  timerInterval = setInterval(tickTimer, 1000);
+}
+
+function stopGame() {
+  clearInterval(timerInterval);
+  clearInterval(waterInterval);
+  timerInterval = null;
+  waterInterval = null;
+}
+
+// ══════════════════════════════════════════════════════
+// TIMER — single source of truth
+// Water level = 100% - (timerSec / timerMax * 100)
+// i.e. full time = empty tank, zero time = full tank
+// ══════════════════════════════════════════════════════
+function tickTimer() {
+  if (!gameActive) return;
+  timerSec = Math.max(0, timerSec - 1);
+  syncWaterToTimer();
+  updateTimerDisplay();
+  if (timerSec <= 0) { gameOver('TIME'); }
+}
+
+// Derive water level purely from remaining time
+function syncWaterToTimer() {
+  const pct = 100 - (timerSec / timerMax * 100);
+  setWater(pct);
+}
+
+function updateTimerDisplay() {
+  const pct = timerSec / timerMax;
+  const fill = document.getElementById('timer-fill');
+  fill.style.width = (pct * 100) + '%';
+  const m = Math.floor(timerSec / 60);
+  const s = timerSec % 60;
+  const disp = document.getElementById('timer-display');
+  disp.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+
+  // Colour coding
+  if (pct > 0.5) {
+    fill.style.background = 'linear-gradient(90deg,var(--green),var(--cyan))';
+    disp.className = 'timer-big';
+  } else if (pct > 0.25) {
+    fill.style.background = 'linear-gradient(90deg,var(--amber),#ffca00)';
+    disp.className = 'timer-big warn';
+  } else {
+    fill.style.background = 'linear-gradient(90deg,var(--red),#ff6b6b)';
+    disp.className = 'timer-big danger';
+  }
+}
+
+function showTimerDelta(seconds, isBonus) {
+  const el = document.getElementById('timer-delta');
+  el.textContent = isBonus ? `+${seconds}s` : `-${seconds}s`;
+  el.className = 'timer-delta ' + (isBonus ? 'plus' : 'minus');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ''; el.className = 'timer-delta'; }, 1500);
+}
+
+// ══════════════════════════════════════════════════════
+// WATER — visual only, driven by syncWaterToTimer()
+// Direct setWater calls also allowed for burst/pump effects
+// that temporarily adjust timerSec then re-sync
+// ══════════════════════════════════════════════════════
+function setWater(pct) {
+  waterPct = Math.max(0, Math.min(100, pct));
+  const fill = document.getElementById('water-fill');
+  fill.style.height = waterPct + '%';
+  document.getElementById('water-pct').textContent = Math.round(waterPct) + '%';
+
+  // Colour
+  let wColor;
+  if (waterPct < 30) wColor = 'linear-gradient(180deg,rgba(0,200,255,0.7),rgba(0,100,200,0.9))';
+  else if (waterPct < 50) wColor = 'linear-gradient(180deg,rgba(255,229,0,0.7),rgba(200,140,0,0.9))';
+  else if (waterPct < 80) wColor = 'linear-gradient(180deg,rgba(255,150,0,0.7),rgba(180,80,0,0.9))';
+  else wColor = 'linear-gradient(180deg,rgba(255,59,92,0.8),rgba(160,0,30,0.95))';
+  fill.style.background = wColor;
+
+  updateAlertStatus();
+}
+
+function addWater(amount) { setWater(waterPct + amount); }
+function pumpWater(amount) { setWater(waterPct - amount); }
+
+function updateAlertStatus() {
+  const el = document.getElementById('alert-status');
+  let txt, col;
+  if (waterPct < 30) { txt='◉ SAFE'; col='var(--green)'; }
+  else if (waterPct < 50) { txt='⚠ CAUTION'; col='#ffe500'; }
+  else if (waterPct < 80) { txt='⚠ ALERT'; col='var(--amber)'; }
+  else if (waterPct < 90) { txt='🔴 HIGH ALERT'; col='#ff7a3b'; }
+  else if (waterPct < 100) { txt='💀 DANGER'; col='var(--red)'; }
+  else { txt='☠ FLOODED'; col='var(--red)'; }
+  el.textContent = txt;
+  el.style.color = col;
+  el.style.borderColor = col;
+}
+
+function flashTank(color) {
+  const fl = document.getElementById('tank-flash');
+  fl.style.background = color;
+  fl.classList.remove('flash');
+  void fl.offsetWidth;
+  fl.classList.add('flash');
+}
+
+// ══════════════════════════════════════════════════════
+// VERBS & INPUTS
+// ══════════════════════════════════════════════════════
+function loadVerb() {
+  if (verbIndex >= verbsInRound.length) {
+    // Re-shuffle remaining (shouldn't happen with enough verbs)
+    verbIndex = 0; shuffle(verbsInRound);
+  }
+  curVerb = verbsInRound[verbIndex];
+  pastLocked = false;
+  participleLocked = false;
+
+  document.getElementById('verb-display').textContent = curVerb[0].toUpperCase();
+  document.getElementById('verb-spanish').textContent = '// ' + curVerb[3];
+
+  buildLetterBoxes('boxes-past', getPastAnswers()[0], 'past');
+  buildLetterBoxes('boxes-participle', getParticipleAnswers()[0], 'participle');
+
+  resetInputGroup('ig-past');
+  resetInputGroup('ig-participle');
+  document.getElementById('fb-past').textContent = '';
+  document.getElementById('fb-participle').textContent = '';
+
+  document.getElementById('submit-btn').disabled = false;
+
+  // Focus first box
+  setTimeout(() => {
+    const first = document.querySelector('#boxes-past .letter-box');
+    if (first) first.focus();
+  }, 50);
+}
+
+function getPastAnswers() {
+  // returns array of accepted spellings
+  const v = curVerb[1];
+  return Array.isArray(v) ? v : [v];
+}
+function getParticipleAnswers() {
+  const v = curVerb[2];
+  return Array.isArray(v) ? v : [v];
+}
+
+function buildLetterBoxes(containerId, referenceWord, fieldName) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  // Handle compound words with space (e.g., "got/gotten" — split by slash shown as separator)
+  // We use the first accepted answer's length for box count
+  const word = referenceWord.replace(/\s/g,'');
+  for (let i=0;i<word.length;i++) {
+    const box = document.createElement('input');
+    box.type='text'; box.maxLength=1;
+    box.className='letter-box';
+    box.dataset.index = i;
+    box.dataset.field = fieldName;
+    box.autocomplete='off'; box.autocorrect='off'; box.spellcheck=false;
+    box.addEventListener('input', e => onLetterInput(e, containerId, fieldName));
+    box.addEventListener('keydown', e => onLetterKeydown(e, containerId, fieldName));
+    c.appendChild(box);
+  }
+}
+
+function onLetterInput(e, containerId, fieldName) {
+  const box = e.target;
+  const val = box.value.toLowerCase().replace(/[^a-z]/g,'');
+  box.value = val;
+  if (val) {
+    box.classList.add('filled');
+    // Move to next
+    const boxes = [...document.querySelectorAll(`#${containerId} .letter-box`)];
+    const idx = parseInt(box.dataset.index);
+    if (idx < boxes.length-1) boxes[idx+1].focus();
+  } else {
+    box.classList.remove('filled');
+  }
+}
+
+function onLetterKeydown(e, containerId, fieldName) {
+  const box = e.target;
+  const boxes = [...document.querySelectorAll(`#${containerId} .letter-box`)];
+  const idx = parseInt(box.dataset.index);
+  if (e.key==='Backspace' && !box.value && idx > 0) {
+    e.preventDefault();
+    boxes[idx-1].focus();
+    boxes[idx-1].value='';
+    boxes[idx-1].classList.remove('filled');
+  }
+  if (e.key==='ArrowLeft' && idx>0) { e.preventDefault(); boxes[idx-1].focus(); }
+  if (e.key==='ArrowRight' && idx<boxes.length-1) { e.preventDefault(); boxes[idx+1].focus(); }
+  if (e.key==='Enter') submitAnswer();
+  // Jump to participle when done with past
+  if (fieldName==='past' && idx===boxes.length-1 && box.value && e.key!=='Backspace') {
+    const participle = document.querySelector('#boxes-participle .letter-box');
+    if (participle && !pastLocked) setTimeout(()=>participle.focus(),10);
+  }
+}
+
+function getTyped(containerId) {
+  return [...document.querySelectorAll(`#${containerId} .letter-box`)]
+    .map(b=>b.value.toLowerCase()).join('');
+}
+
+function resetInputGroup(id) {
+  const ig = document.getElementById(id);
+  ig.classList.remove('correct','incorrect','locked-correct');
+  const boxes = ig.querySelectorAll('.letter-box');
+  boxes.forEach(b=>{ b.classList.remove('box-correct','box-error','filled'); b.disabled=false; b.value=''; });
+}
+
+// ══════════════════════════════════════════════════════
+// SUBMIT
+// ══════════════════════════════════════════════════════
+function submitAnswer() {
+  if (!gameActive) return;
+
+  const typedPast = getTyped('boxes-past');
+  const typedParticiple = getTyped('boxes-participle');
+
+  const pastAnswers = getPastAnswers().map(a=>a.toLowerCase());
+  const participleAnswers = getParticipleAnswers().map(a=>a.toLowerCase());
+
+  const pastCorrect = pastLocked || pastAnswers.includes(typedPast);
+  const participleCorrect = participleLocked || participleAnswers.includes(typedParticiple);
+
+  // Highlight boxes
+  if (!pastLocked) markBoxes('boxes-past', typedPast, pastAnswers, pastCorrect);
+  if (!participleLocked) markBoxes('boxes-participle', typedParticiple, participleAnswers, participleCorrect);
+
+  // Feedback labels
+  const fbPast = document.getElementById('fb-past');
+  const fbParticiple = document.getElementById('fb-participle');
+
+  if (pastCorrect && !pastLocked) {
+    document.getElementById('ig-past').classList.add('correct');
+    fbPast.textContent = '✓ Correct'; fbPast.className='input-feedback ok';
+    lockField('ig-past','boxes-past');
+    pastLocked = true;
+  } else if (!pastCorrect) {
+    document.getElementById('ig-past').classList.add('incorrect');
+    fbPast.textContent = '✗ Try again'; fbPast.className='input-feedback err';
+  }
+
+  if (participleCorrect && !participleLocked) {
+    document.getElementById('ig-participle').classList.add('correct');
+    fbParticiple.textContent = '✓ Correct'; fbParticiple.className='input-feedback ok';
+    lockField('ig-participle','boxes-participle');
+    participleLocked = true;
+  } else if (!participleCorrect) {
+    document.getElementById('ig-participle').classList.add('incorrect');
+    fbParticiple.textContent = '✗ Try again'; fbParticiple.className='input-feedback err';
+  }
+
+  // Both correct → add time (pump water), advance
+  if (pastCorrect && participleCorrect) {
+    const reward = getLevelReward(currentLevel);
+    timerSec = Math.min(timerMax, timerSec + reward);
+    syncWaterToTimer();
+    updateTimerDisplay();
+    showTimerDelta(reward, true);
+    flashTank('rgba(0,255,157,0.3)');
+    correctCount++;
+    verbsDone++;
+    document.getElementById('score-correct').textContent = correctCount;
+    document.getElementById('score-verbs').textContent = verbsDone+'/6';
+
+    if (verbsDone >= 6) {
+      setTimeout(levelWon, 600);
+    } else {
+      verbIndex++;
+      setTimeout(loadVerb, 800);
+    }
+    return;
+  }
+
+  // At least one wrong → subtract time (burst water)
+  if (!pastCorrect || (!participleLocked && !participleCorrect)) {
+    const penalty = getLevelPenalty(currentLevel);
+    timerSec = Math.max(0, timerSec - penalty);
+    syncWaterToTimer();
+    updateTimerDisplay();
+    showTimerDelta(penalty, false);
+    flashTank('rgba(255,59,92,0.5)');
+    wrongCount++;
+    document.getElementById('hud-wrong').textContent = wrongCount;
+    document.getElementById('score-wrong').textContent = wrongCount;
+    if (timerSec <= 0) { gameOver('TIME'); return; }
+  }
+
+  // Clear wrong fields for retry
+  if (!pastCorrect) clearField('boxes-past','ig-past');
+  if (!participleCorrect) clearField('boxes-participle','ig-participle');
+
+  // Focus first empty field
+  setTimeout(()=>{
+    if (!pastLocked) {
+      const first = document.querySelector('#boxes-past .letter-box');
+      if (first) first.focus();
+    } else if (!participleLocked) {
+      const first = document.querySelector('#boxes-participle .letter-box');
+      if (first) first.focus();
+    }
+  }, 50);
+}
+
+function markBoxes(containerId, typed, correctAnswers, isCorrect) {
+  const boxes = [...document.querySelectorAll(`#${containerId} .letter-box`)];
+  // Find best matching answer
+  const bestMatch = correctAnswers[0];
+  boxes.forEach((b,i) => {
+    b.classList.remove('box-correct','box-error');
+    if (isCorrect) {
+      b.classList.add('box-correct');
+    } else {
+      const expected = bestMatch[i] || '';
+      if (b.value === expected) b.classList.add('box-correct');
+      else b.classList.add('box-error');
+    }
+  });
+}
+
+function lockField(groupId, containerId) {
+  const ig = document.getElementById(groupId);
+  ig.classList.remove('incorrect');
+  ig.classList.add('locked-correct');
+  const boxes = ig.querySelectorAll('.letter-box');
+  boxes.forEach(b=>{ b.disabled=true; b.classList.add('box-correct'); });
+}
+
+function clearField(containerId, groupId) {
+  const ig = document.getElementById(groupId);
+  ig.classList.remove('incorrect');
+  const boxes = [...document.querySelectorAll(`#${containerId} .letter-box`)];
+  boxes.forEach(b=>{ b.value=''; b.classList.remove('box-correct','box-error','filled'); });
+}
+
+// ══════════════════════════════════════════════════════
+// WIN / LOSE
+// ══════════════════════════════════════════════════════
+function getStars(errors) {
+  if (errors === 0) return 5;
+  if (errors <= 2) return 4;
+  if (errors <= 5) return 3;
+  if (errors <= 9) return 2;
+  return 1;
+}
+
+function buildShareText(level, won, timeLeftSec, errors, correct) {
+  const tierName = level <= 3 ? 'Regular' : level <= 7 ? 'Common Irregulars' : 'Advanced';
+  const stars = won ? getStars(errors) : 0;
+  const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  const m = Math.floor(timeLeftSec / 60);
+  const s = timeLeftSec % 60;
+  const timeStr = m + ':' + (s < 10 ? '0' : '') + s;
+  const status = won ? '✅ LAB SECURED' : '🌊 FLOODED';
+
+  return [
+    '🧪 TYPE OR DROWN — ESL Verb Game',
+    `Level ${level} · ${tierName}`,
+    `${status}`,
+    ``,
+    `⏱ Time left: ${won ? timeStr : '0:00'}`,
+    `✓ Correct: ${correct}   ✗ Errors: ${errors}`,
+    `${starStr}`,
+    ``,
+    `Think you can beat me? 👇`,
+    `https://yoavharo-dotcom.github.io/EnglishWebExercises/type-or-drown.html`
+  ].join('\n');
+}
+
+function levelWon() {
+  stopGame();
+  gameActive = false;
+
+  if (!completedLevels.includes(currentLevel)) completedLevels.push(currentLevel);
+  if (currentLevel < 10 && !unlockedLevels.includes(currentLevel+1)) {
+    unlockedLevels.push(currentLevel+1);
+  }
+  saveProgress();
+
+  const stars = getStars(wrongCount);
+  const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  const shareText = buildShareText(currentLevel, true, timerSec, wrongCount, correctCount);
+
+  const popup = document.getElementById('result-popup');
+  popup.className = 'result-popup win';
+  document.getElementById('popup-icon').textContent = '🧪';
+  document.getElementById('popup-title').innerHTML = '<span style="color:var(--green)">The Lab is Safe!</span>';
+  document.getElementById('popup-sub').textContent = '// LEVEL ' + currentLevel + ' CLEARED //';
+
+  // Inject share card
+  let shareSection = document.getElementById('share-section');
+  if (!shareSection) {
+    shareSection = document.createElement('div');
+    shareSection.id = 'share-section';
+    document.getElementById('result-popup').insertBefore(shareSection, document.getElementById('popup-btns'));
+  }
+  shareSection.innerHTML = `
+    <div class="share-card">${shareText}</div>
+    <button class="share-btn" id="share-copy-btn" onclick="copyShareText()">📋 Copy &amp; Share</button>
+  `;
+  shareSection.style.display = 'block';
+  window._shareText = shareText;
+
+  const btns = document.getElementById('popup-btns');
+  btns.innerHTML = '';
+  btns.style.marginTop = '12px';
+  if (currentLevel < 10) {
+    const nb = document.createElement('button');
+    nb.className='popup-btn primary'; nb.textContent='Next Level →';
+    nb.onclick=()=>{ hidePopup(); startLevel(currentLevel+1); };
+    btns.appendChild(nb);
+  }
+  const rb = document.createElement('button');
+  rb.className='popup-btn secondary'; rb.textContent='Play Again';
+  rb.onclick=()=>{ hidePopup(); startLevel(currentLevel); };
+  btns.appendChild(rb);
+  const mb = document.createElement('button');
+  mb.className='popup-btn secondary'; mb.textContent='Menu';
+  mb.onclick=()=>returnToMenu();
+  btns.appendChild(mb);
+
+  showPopup();
+}
+
+function gameOver(reason) {
+  stopGame();
+  gameActive = false;
+
+  const shareText = buildShareText(currentLevel, false, 0, wrongCount, correctCount);
+
+  const popup = document.getElementById('result-popup');
+  popup.className = 'result-popup lose';
+  document.getElementById('popup-icon').textContent = '🌊';
+  const msg = reason === 'TIME' ? 'Time Expired!' : 'Tank Overflowed!';
+  document.getElementById('popup-title').innerHTML = `<span style="color:var(--red)">${msg}</span>`;
+  document.getElementById('popup-sub').textContent = '// GAME OVER — LEVEL ' + currentLevel + ' //';
+
+  // Share card even on loss — creates social pressure to replay
+  let shareSection = document.getElementById('share-section');
+  if (!shareSection) {
+    shareSection = document.createElement('div');
+    shareSection.id = 'share-section';
+    document.getElementById('result-popup').insertBefore(shareSection, document.getElementById('popup-btns'));
+  }
+  shareSection.innerHTML = `
+    <div class="share-card">${shareText}</div>
+    <button class="share-btn" id="share-copy-btn" onclick="copyShareText()">📋 Copy &amp; Share</button>
+  `;
+  shareSection.style.display = 'block';
+  window._shareText = shareText;
+
+  const btns = document.getElementById('popup-btns');
+  btns.innerHTML = '';
+  btns.style.marginTop = '12px';
+  const rb = document.createElement('button');
+  rb.className='popup-btn primary'; rb.textContent='Try Again';
+  rb.onclick=()=>{ hidePopup(); startLevel(currentLevel); };
+  btns.appendChild(rb);
+  const mb = document.createElement('button');
+  mb.className='popup-btn secondary'; mb.textContent='Menu';
+  mb.onclick=()=>returnToMenu();
+  btns.appendChild(mb);
+
+  showPopup();
+  if (reason === 'WATER') setWater(100);
+}
+
+function copyShareText() {
+  const text = window._shareText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('share-copy-btn');
+    if (btn) {
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '📋 Copy & Share';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('share-copy-btn');
+    if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
+  });
+}
+
+function showPopup() {
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('result-popup').classList.add('show');
+}
+function hidePopup() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('result-popup').classList.remove('show');
+  const ss = document.getElementById('share-section');
+  if (ss) ss.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// HUD
+// ══════════════════════════════════════════════════════
+function updateHUD() {
+  document.getElementById('hud-level').textContent = currentLevel;
+  document.getElementById('hud-round').textContent = currentRound;
+  document.getElementById('hud-verb-num').textContent = Math.min(verbsDone+1,6);
+  document.getElementById('hud-wrong').textContent = wrongCount;
+}
+
+function updateRoundDots() {
+  for (let i=0;i<3;i++) {
+    const d = document.getElementById('rd'+i);
+    d.classList.remove('done','active');
+    if (i < currentRound-1) d.classList.add('done');
+    else if (i === currentRound-1) d.classList.add('active');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// BUBBLES
+// ══════════════════════════════════════════════════════
+function spawnBubbles() {
+  const tank = document.querySelector('.tank-outer');
+  for (let i=0;i<8;i++) {
+    const b = document.createElement('div');
+    b.className='bubble';
+    const size = 4 + Math.random()*8;
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${10+Math.random()*80}%;
+      bottom:${Math.random()*30}%;
+      animation-duration:${3+Math.random()*4}s;
+      animation-delay:${Math.random()*5}s;
+    `;
+    tank.appendChild(b);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
